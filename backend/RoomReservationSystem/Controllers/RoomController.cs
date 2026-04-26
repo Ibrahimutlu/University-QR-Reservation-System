@@ -1,0 +1,199 @@
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using RoomReservationSystem.Data;
+using RoomReservationSystem.Models;
+using System;
+using System.Linq;
+
+namespace RoomReservationSystem.Controllers
+{
+    [ApiController]
+    [Route("api/room")]
+    public class RoomController : ControllerBase
+    {
+        private readonly AppDbContext _context;
+
+        public RoomController(AppDbContext context)
+        {
+            _context = context;
+        }
+        [HttpGet("available-slots/{roomId}")]
+        [Authorize(Roles = "Student,Staff,Admin")]
+        public IActionResult GetAvailableSlots(int roomId, [FromQuery] DateTime date)
+        {
+            var room = _context.Rooms.FirstOrDefault(r => r.RoomID == roomId);
+
+            if (room == null)
+                return NotFound("Room does not exist in the system");
+
+            // Get all confirmed reservations for this room on this date
+            var bookedSlots = _context.Reservations
+                .Where(r => r.RoomID == roomId &&
+                       r.ReservationDate.Date == date.Date &&
+                       r.Status == "Confirmed")
+                .Select(r => new
+                {
+                    StartTime = r.StartTime,
+                    EndTime = r.EndTime,
+                })
+                .OrderBy(r => r.StartTime)
+                .ToList();
+
+            // Define working hours 8am to 8pm
+            var workingStart = date.Date.AddHours(8);
+            var workingEnd = date.Date.AddHours(20);
+
+            // Find available slots
+            var availableSlots = new System.Collections.Generic.List<object>();
+            var currentTime = workingStart;
+
+            foreach (var booked in bookedSlots)
+            {
+                if (currentTime < booked.StartTime)
+                {
+                    availableSlots.Add(new
+                    {
+                        StartTime = currentTime.ToString("HH:mm"),
+                        EndTime = booked.StartTime.ToString("HH:mm"),
+                        Status = "Available"
+                    });
+                }
+                currentTime = booked.EndTime;
+            }
+
+            // Add remaining time after last booking
+            if (currentTime < workingEnd)
+            {
+                availableSlots.Add(new
+                {
+                    StartTime = currentTime.ToString("HH:mm"),
+                    EndTime = workingEnd.ToString("HH:mm"),
+                    Status = "Available"
+                });
+            }
+
+            return Ok(new
+            {
+                RoomID = room.RoomID,
+                RoomName = room.RoomName,
+                Date = date.ToString("yyyy-MM-dd"),
+                AvailableSlots = availableSlots,
+                BookedSlots = bookedSlots.Select(b => new
+                {
+                    StartTime = b.StartTime.ToString("HH:mm"),
+                    EndTime = b.EndTime.ToString("HH:mm"),
+                    Status = "Booked"
+                })
+            });
+        }
+
+        [HttpGet("status/{roomId}")]
+        [Authorize(Roles = "Student,Staff,Admin")]
+        public IActionResult GetRoomStatus(int roomId)
+        {
+            var room = _context.Rooms.FirstOrDefault(r => r.RoomID == roomId);
+
+            if (room == null)
+                return NotFound("Room does not exist in the system");
+
+            var currentReservation = _context.Reservations.FirstOrDefault(r =>
+                r.RoomID == roomId &&
+                r.Status == "Confirmed" &&
+                r.StartTime <= DateTime.Now &&
+                r.EndTime >= DateTime.Now);
+
+            if (currentReservation == null)
+            {
+                return Ok(new
+                {
+                    RoomID = room.RoomID,
+                    RoomName = room.RoomName,
+                    RoomType = room.RoomType,
+                    IsAvailable = true,
+                    CurrentReservation = (object)null
+                });
+            }
+            else
+            {
+                return Ok(new
+                {
+                    RoomID = room.RoomID,
+                    RoomName = room.RoomName,
+                    RoomType = room.RoomType,
+                    IsAvailable = false,
+                    CurrentReservation = new
+                    {
+                        ReservationID = currentReservation.ReservationID,
+                        StartTime = currentReservation.StartTime,
+                        EndTime = currentReservation.EndTime
+                    }
+                });
+            }
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "Student,Staff,Admin")]
+        public IActionResult GetAllRooms()
+        {
+            var rooms = _context.Rooms.ToList();
+
+            if (rooms == null || rooms.Count == 0)
+                return NotFound("No rooms found");
+
+            return Ok(rooms);
+        }
+
+        [HttpPost("add")]
+        [Authorize(Roles = "Admin")]
+        public IActionResult AddRoom([FromBody] Room room)
+        {
+            if (room == null)
+                return BadRequest("Invalid room details");
+
+            if (string.IsNullOrEmpty(room.RoomName) ||
+                string.IsNullOrEmpty(room.RoomType) ||
+                string.IsNullOrEmpty(room.Location))
+                return BadRequest("RoomName, RoomType and Location are required");
+
+            room.IsAvailable = true;
+            _context.Rooms.Add(room);
+            _context.SaveChanges();
+
+            return Ok(new { message = "Room added successfully", RoomID = room.RoomID });
+        }
+
+        [HttpPut("update/{roomId}")]
+        [Authorize(Roles = "Admin")]
+        public IActionResult UpdateRoom(int roomId, [FromBody] Room updatedRoom)
+        {
+            var room = _context.Rooms.FirstOrDefault(r => r.RoomID == roomId);
+
+            if (room == null)
+                return NotFound("Room does not exist");
+
+            room.RoomName = updatedRoom.RoomName;
+            room.RoomType = updatedRoom.RoomType;
+            room.Capacity = updatedRoom.Capacity;
+            room.Location = updatedRoom.Location;
+
+            _context.SaveChanges();
+
+            return Ok(new { message = "Room updated successfully" });
+        }
+
+        [HttpDelete("delete/{roomId}")]
+        [Authorize(Roles = "Admin")]
+        public IActionResult DeleteRoom(int roomId)
+        {
+            var room = _context.Rooms.FirstOrDefault(r => r.RoomID == roomId);
+
+            if (room == null)
+                return NotFound("Room does not exist");
+
+            _context.Rooms.Remove(room);
+            _context.SaveChanges();
+
+            return Ok(new { message = "Room deleted successfully" });
+        }
+    }
+}
