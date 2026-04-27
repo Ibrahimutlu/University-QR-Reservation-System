@@ -23,11 +23,12 @@ namespace RoomReservationSystem
 
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddControllers().AddJsonOptions(options =>
-            {
-                options.JsonSerializerOptions.ReferenceHandler =
-                    System.Text.Json.Serialization.ReferenceHandler.Preserve;
-            });
+            // No ReferenceHandler.Preserve — that wraps every collection as
+            // { "$id":"1", "$values":[...] } which breaks plain JSON consumers
+            // (the frontend expects a real array). Cycles are already prevented
+            // by [JsonIgnore] on the back-reference navigation properties of
+            // the entity models.
+            services.AddControllers();
 
             services.AddSwaggerGen(c =>
             {

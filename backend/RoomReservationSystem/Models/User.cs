@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace RoomReservationSystem.Models
 {
@@ -30,6 +31,9 @@ namespace RoomReservationSystem.Models
       
 
 
+        // Inverse navigation — hidden from JSON to break serialization cycles.
+        // EF still uses it for joins / projections inside controllers.
+        [JsonIgnore]
         public ICollection<Reservation> Reservations { get; set; }
     }
 }

@@ -36,10 +36,7 @@ echo [3/5] Database setup...
 REM Convert this script's database/ directory to a WSL path
 for /f "tokens=*" %%i in ('wsl wslpath "%~dp0database"') do set "DB_DIR=%%i"
 
-REM Compose a single bash invocation that:
-REM   * starts postgres if it isn't running (passwordless if possible)
-REM   * creates the DB if missing
-REM   * applies schema + seed (idempotent)
+REM 3a. Start postgres in WSL and apply schema + seed (idempotent)
 wsl bash -c "set -e; service postgresql status >/dev/null 2>&1 || sudo -n service postgresql start >/dev/null 2>&1 || sudo service postgresql start >/dev/null 2>&1; PGPASSWORD=postgres psql -U postgres -h localhost -c 'SELECT 1' >/dev/null 2>&1 || { echo 'PostgreSQL is not reachable on localhost:5432'; exit 1; }; PGPASSWORD=postgres psql -U postgres -h localhost -tc \"SELECT 1 FROM pg_database WHERE datname='RoomReservationDB'\" | grep -q 1 || PGPASSWORD=postgres psql -U postgres -h localhost -c 'CREATE DATABASE \"RoomReservationDB\"' >/dev/null; PGPASSWORD=postgres psql -U postgres -h localhost -d RoomReservationDB -f '%DB_DIR%/schema.sql' >/dev/null; PGPASSWORD=postgres psql -U postgres -h localhost -d RoomReservationDB -f '%DB_DIR%/seed.sql' >/dev/null"
 
 if errorlevel 1 (
@@ -49,6 +46,26 @@ if errorlevel 1 (
     exit /b 1
 )
 echo       Schema + seed applied.
+
+REM 3b. Make sure Windows can reach Postgres at localhost:5432.
+REM     If WSL2 hasn't forwarded the port (Postgres bound to 127.0.0.1
+REM     only), run fix-pg-bind.sh once to switch listen_addresses to '*'.
+echo       Verifying Windows can reach Postgres...
+powershell -NoProfile -Command "if (-not (Test-NetConnection -ComputerName localhost -Port 5432 -InformationLevel Quiet -WarningAction SilentlyContinue)) { exit 1 }" >nul 2>&1
+if errorlevel 1 (
+    echo       Not reachable from Windows. Applying one-time bind fix...
+    wsl bash "%DB_DIR%/fix-pg-bind.sh" >nul 2>&1
+    powershell -NoProfile -Command "if (-not (Test-NetConnection -ComputerName localhost -Port 5432 -InformationLevel Quiet -WarningAction SilentlyContinue)) { exit 1 }" >nul 2>&1
+    if errorlevel 1 (
+        echo [ERROR] Postgres still not reachable from Windows.
+        echo         Run database\fix-pg-bind.sh manually inside WSL.
+        pause
+        exit /b 1
+    )
+    echo       Bind fix applied.
+) else (
+    echo       Reachable from Windows.
+)
 
 REM ---- 4. Start backend in a new window -----------------
 echo [4/5] Backend  (http://localhost:5000)

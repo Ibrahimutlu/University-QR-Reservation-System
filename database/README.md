@@ -26,6 +26,21 @@ PGPASSWORD=postgres psql -U postgres -h localhost -d RoomReservationDB -f schema
 PGPASSWORD=postgres psql -U postgres -h localhost -d RoomReservationDB -f seed.sql
 ```
 
+## Windows ↔ WSL bind fix
+
+If you run the .NET backend on **Windows** and PostgreSQL inside **WSL2**,
+Windows-localhost calls to port 5432 may be refused because Postgres binds
+to `127.0.0.1` only by default. Run this once inside WSL to make Postgres
+listen on every interface and accept md5 auth:
+
+```bash
+bash database/fix-pg-bind.sh
+```
+
+The script edits `postgresql.conf` (`listen_addresses = '*'`) and appends an
+`md5` rule to `pg_hba.conf`, then restarts the service. `start-demo.bat`
+runs it automatically when it detects the connection failure.
+
 Verify:
 
 ```bash

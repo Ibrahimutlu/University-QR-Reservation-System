@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace RoomReservationSystem.Models
 {
@@ -27,8 +28,11 @@ namespace RoomReservationSystem.Models
 
        
 
+        // Inverse navs — hidden from JSON to break serialization cycles.
+        [JsonIgnore]
         public ICollection<Reservation> Reservations { get; set; }
 
+        [JsonIgnore]
         public QR QR { get; set; }
     }
 }

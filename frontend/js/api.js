@@ -37,7 +37,23 @@
       const message = (data && (data.message || data.error)) || data || response.statusText;
       throw new Error(typeof message === "string" ? message : JSON.stringify(message));
     }
-    return data;
+    return unwrap(data);
+  }
+
+  // Recursively strip ASP.NET Core's ReferenceHandler.Preserve metadata
+  // ($id / $ref / $values) so the frontend always sees plain arrays/objects.
+  function unwrap(value) {
+    if (Array.isArray(value)) return value.map(unwrap);
+    if (value && typeof value === "object") {
+      if (Array.isArray(value.$values)) return value.$values.map(unwrap);
+      const out = {};
+      for (const k of Object.keys(value)) {
+        if (k === "$id" || k === "$ref") continue;
+        out[k] = unwrap(value[k]);
+      }
+      return out;
+    }
+    return value;
   }
 
   window.Api = {
