@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -29,6 +29,11 @@ namespace RoomReservationSystem.Models
         public string Status { get; set; } = "Pending";
 
         public DateTime CreatedAt { get; set; } = DateTime.Now;
+
+        // JSON payload encoded inside the QR code generated when the
+        // reservation is confirmed. Used by the QR validation endpoint
+        // to authorise check-in.
+        public string QRCodeData { get; set; }
 
         public User User { get; set; }
 

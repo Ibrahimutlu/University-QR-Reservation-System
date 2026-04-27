@@ -1,0 +1,200 @@
+/* ──────────────────────────────────────────────────────────
+   RoomLink — design tokens & shared styles
+   Augments Tailwind via CDN.
+   ────────────────────────────────────────────────────────── */
+:root {
+  --brand-50:  #eef2ff;
+  --brand-100: #e0e7ff;
+  --brand-500: #6366f1;
+  --brand-600: #4f46e5;
+  --brand-700: #4338ca;
+  --accent:    #10b981;
+  --slate-50:  #f8fafc;
+  --slate-900: #0f172a;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: var(--slate-900);
+  background: var(--slate-50);
+}
+
+/* Subtle gradient backdrop for hero / login */
+.hero-gradient {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99,102,241,0.25), transparent),
+    radial-gradient(ellipse 50% 50% at 110% 90%, rgba(16,185,129,0.20), transparent),
+    linear-gradient(180deg, #fafbff 0%, #f1f5f9 100%);
+}
+
+/* Card glow */
+.card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgba(15,23,42,0.04),
+              0 8px 24px -8px rgba(15,23,42,0.08);
+  border: 1px solid rgba(15,23,42,0.05);
+}
+
+.card-hoverable {
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.card-hoverable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(15,23,42,0.05),
+              0 16px 36px -10px rgba(99,102,241,0.20);
+  border-color: rgba(99,102,241,0.25);
+}
+
+/* Primary button */
+.btn-primary {
+  background: linear-gradient(135deg, var(--brand-600), var(--brand-700));
+  color: white;
+  font-weight: 500;
+  padding: 0.625rem 1.25rem;
+  border-radius: 10px;
+  transition: opacity .15s ease, transform .05s ease;
+  border: none;
+  cursor: pointer;
+}
+.btn-primary:hover     { opacity: .92; }
+.btn-primary:active    { transform: translateY(1px); }
+.btn-primary:disabled  { opacity: .5; cursor: not-allowed; }
+
+/* Secondary button */
+.btn-secondary {
+  background: white;
+  color: var(--slate-900);
+  font-weight: 500;
+  padding: 0.625rem 1.25rem;
+  border-radius: 10px;
+  border: 1px solid rgba(15,23,42,0.12);
+  cursor: pointer;
+  transition: background .15s ease;
+}
+.btn-secondary:hover { background: var(--slate-50); }
+
+/* Danger button */
+.btn-danger {
+  background: #dc2626;
+  color: white;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+}
+.btn-danger:hover { background: #b91c1c; }
+
+/* Inputs */
+input, select, textarea {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  border-radius: 10px;
+  border: 1px solid rgba(15,23,42,0.12);
+  background: white;
+  font-size: 0.9rem;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 4px rgba(99,102,241,0.15);
+}
+
+label { font-size: 0.8rem; font-weight: 500; color: #475569; display: block; margin-bottom: 0.35rem; }
+
+/* Status pills */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: .02em;
+}
+.pill-confirmed { background: #d1fae5; color: #047857; }
+.pill-cancelled { background: #fee2e2; color: #b91c1c; }
+.pill-pending   { background: #fef3c7; color: #92400e; }
+.pill-expired   { background: #e2e8f0; color: #475569; }
+
+/* Top nav */
+.topnav {
+  background: white;
+  border-bottom: 1px solid rgba(15,23,42,0.07);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--brand-500), var(--brand-700));
+  color: white;
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  padding: 0.85rem 1.1rem;
+  border-radius: 12px;
+  background: var(--slate-900);
+  color: white;
+  font-size: 0.875rem;
+  box-shadow: 0 16px 36px -10px rgba(15,23,42,0.4);
+  z-index: 9999;
+  animation: toast-in .22s ease;
+}
+.toast.success { background: #047857; }
+.toast.error   { background: #b91c1c; }
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Modal backdrop */
+.modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(15,23,42,0.5);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100;
+  padding: 1rem;
+  animation: fade-in .15s ease;
+}
+@keyframes fade-in { from {opacity:0;} to {opacity:1;} }
+
+.modal {
+  background: white;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 480px;
+  padding: 1.75rem;
+  box-shadow: 0 24px 48px -12px rgba(15,23,42,0.3);
+}
+
+/* Empty state */
+.empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #64748b;
+}
+
+/* QR image styling */
+.qr-canvas {
+  background: white;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(15,23,42,0.08);
+  display: inline-block;
+}

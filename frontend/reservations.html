@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>RoomLink — My Bookings</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="nav-slot"></div>
+
+  <main class="max-w-6xl mx-auto px-4 py-8">
+    <header class="mb-6">
+      <h1 class="text-2xl md:text-3xl font-bold text-slate-900">My bookings</h1>
+      <p class="text-slate-500 text-sm">Tap on a confirmed reservation to view its QR code.</p>
+    </header>
+
+    <div id="list" class="space-y-3">
+      <div class="card p-5 animate-pulse">
+        <div class="h-4 bg-slate-200 rounded w-1/3 mb-3"></div>
+        <div class="h-3 bg-slate-100 rounded w-1/2"></div>
+      </div>
+    </div>
+  </main>
+
+  <div id="modal-root"></div>
+
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/nav.js"></script>
+  <script src="js/reservations.js"></script>
+</body>
+</html>
