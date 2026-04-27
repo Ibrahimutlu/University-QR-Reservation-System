@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RoomReservationSystem.Data;
+using RoomReservationSystem.Services;
 using System;
 using System.Linq;
 using System.Security.Claims;
@@ -13,10 +14,43 @@ namespace RoomReservationSystem.Controllers
     public class QRController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly QRService    _qrService;
 
-        public QRController(AppDbContext context)
+        public QRController(AppDbContext context, QRService qrService)
         {
-            _context = context;
+            _context   = context;
+            _qrService = qrService;
+        }
+
+        // ──────────────────────────────────────────────────────────────────
+        // Render the printable PNG of the room's door sticker QR.
+        // Anyone authenticated can pull it (so admins can print it and
+        // students can display it during a demo).
+        // ──────────────────────────────────────────────────────────────────
+        [HttpGet("room/{roomId}")]
+        [Authorize(Roles = "Student,Staff,Admin")]
+        public IActionResult GetRoomQR(int roomId)
+        {
+            var room = _context.Rooms.FirstOrDefault(r => r.RoomID == roomId);
+            if (room == null)
+                return NotFound(new { message = "Room does not exist" });
+
+            var qr = _context.QRCodes.FirstOrDefault(q => q.RoomID == roomId);
+            if (qr == null)
+                return NotFound(new { message = "No QR code is attached to this room" });
+
+            string image = _qrService.GenerateFromString(qr.QRCodeValue);
+
+            return Ok(new
+            {
+                roomID      = room.RoomID,
+                roomName    = room.RoomName,
+                roomType    = room.RoomType,
+                location    = room.Location,
+                qrCodeValue = qr.QRCodeValue,
+                isActive    = qr.IsActive,
+                qrImage     = image
+            });
         }
 
         // ──────────────────────────────────────────────────────────────────

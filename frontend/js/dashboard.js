@@ -49,10 +49,14 @@ function roomCard(r) {
         <span>🆔 #${r.roomID}</span>
       </div>
 
-      <button onclick="openBooking(${r.roomID})"
-              class="btn-primary w-full" ${r.isAvailable ? "" : "disabled"}>
-        Reserve
-      </button>
+      <div class="flex gap-2">
+        <button onclick="openBooking(${r.roomID})"
+                class="btn-primary flex-1" ${r.isAvailable ? "" : "disabled"}>
+          Reserve
+        </button>
+        <a href="print-qr.html?room=${r.roomID}" target="_blank"
+           class="btn-secondary text-sm" title="Show / print door QR">QR</a>
+      </div>
     </div>`;
 }
 

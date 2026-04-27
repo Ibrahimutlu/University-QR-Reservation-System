@@ -24,7 +24,9 @@ async function load() {
             ? `<span class="pill pill-confirmed">Available</span>`
             : `<span class="pill pill-expired">Full</span>`}
         </td>
-        <td class="px-4 py-3 text-right">
+        <td class="px-4 py-3 text-right whitespace-nowrap">
+          <a href="print-qr.html?room=${r.roomID}" target="_blank"
+             class="btn-secondary text-xs" title="View / print door QR">QR</a>
           <button class="btn-secondary text-xs" onclick='openEdit(${JSON.stringify(r)})'>Edit</button>
           <button class="btn-danger text-xs"   onclick="del(${r.roomID})">Delete</button>
         </td>

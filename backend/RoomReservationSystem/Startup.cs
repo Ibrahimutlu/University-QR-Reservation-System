@@ -26,7 +26,7 @@ namespace RoomReservationSystem
             services.AddControllers().AddJsonOptions(options =>
             {
                 options.JsonSerializerOptions.ReferenceHandler =
-                    System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+                    System.Text.Json.Serialization.ReferenceHandler.Preserve;
             });
 
             services.AddSwaggerGen(c =>

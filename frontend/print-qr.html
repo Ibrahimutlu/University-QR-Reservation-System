@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>RoomLink — Door QR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    /* On-screen */
+    .sheet {
+      width: 320px;
+      max-width: 90vw;
+      background: white;
+      border-radius: 24px;
+      padding: 28px 24px;
+      box-shadow: 0 30px 80px -20px rgba(15,23,42,0.25);
+      border: 1px solid rgba(15,23,42,0.06);
+      text-align: center;
+    }
+    .sheet h1     { font-size: 1.5rem; font-weight: 700; color: var(--slate-900); margin-bottom: 0.25rem; }
+    .sheet .meta  { color: #64748b; font-size: 0.875rem; margin-bottom: 1.25rem; }
+    .sheet .qr    { background: white; padding: 14px; border-radius: 18px;
+                    border: 1px solid #e2e8f0; display: inline-block; }
+    .sheet img    { width: 240px; height: 240px; display: block; }
+    .sheet .code  { margin-top: 1rem; font-family: ui-monospace, Menlo, Consolas, monospace;
+                    font-size: 0.75rem; color: #475569; word-break: break-all; }
+    .sheet .hint  { margin-top: 1.25rem; font-size: 0.7rem; color: #94a3b8; line-height: 1.4; }
+    .actions      { display: flex; gap: 0.5rem; justify-content: center; margin-top: 1rem; }
+
+    /* Print: show only the .sheet, big and centered */
+    @media print {
+      body * { visibility: hidden; }
+      .sheet, .sheet * { visibility: visible; }
+      .sheet { position: absolute; top: 50%; left: 50%;
+               transform: translate(-50%, -50%);
+               box-shadow: none; border: 2px solid #000;
+               width: 380px; padding: 32px; }
+      .sheet img { width: 320px; height: 320px; }
+      .actions, .topnav, #nav-slot { display: none !important; }
+    }
+  </style>
+</head>
+<body class="hero-gradient min-h-screen">
+  <div id="nav-slot"></div>
+
+  <main class="min-h-[calc(100vh-72px)] flex items-center justify-center p-6">
+    <div id="loading" class="text-slate-500">Loading…</div>
+
+    <div id="card" class="sheet hidden">
+      <div class="text-3xl mb-2">🚪</div>
+      <h1 id="title">Room Name</h1>
+      <p class="meta"><span id="type"></span> · <span id="location"></span></p>
+
+      <div class="qr">
+        <img id="qr-img" alt="Door QR code"/>
+      </div>
+
+      <div class="code" id="code"></div>
+
+      <p class="hint">
+        Print this and tape it on the door, or display it on a screen.<br/>
+        Students with an active reservation may scan it to check in.
+      </p>
+
+      <div class="actions">
+        <button class="btn-primary"   onclick="window.print()">🖨️ Print</button>
+        <button class="btn-secondary" onclick="window.history.back()">← Back</button>
+      </div>
+    </div>
+
+    <div id="error" class="card p-6 hidden text-center">
+      <div class="text-3xl mb-2">⚠️</div>
+      <h2 class="text-lg font-semibold text-slate-900 mb-1">Couldn't load QR</h2>
+      <p id="error-msg" class="text-sm text-slate-500"></p>
+      <a href="dashboard.html" class="btn-primary mt-4 inline-block">Back to dashboard</a>
+    </div>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/nav.js"></script>
+  <script src="js/print-qr.js"></script>
+</body>
+</html>
