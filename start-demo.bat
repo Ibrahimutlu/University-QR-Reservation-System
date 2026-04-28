@@ -68,8 +68,10 @@ if errorlevel 1 (
 )
 
 REM ---- 4. Start backend in a new window -----------------
-echo [4/5] Backend  (http://localhost:5000)
-start "RoomLink Backend" cmd /k "set PATH=C:\Program Files\dotnet;%%PATH%% && cd /d %~dp0backend\RoomReservationSystem && dotnet run"
+REM     Bind to 0.0.0.0 so phones / other devices on the LAN
+REM     can reach the API at http://<your-PC-IP>:5000
+echo [4/5] Backend  (http://0.0.0.0:5000 — reachable from phones on your Wi-Fi)
+start "RoomLink Backend" cmd /k "set PATH=C:\Program Files\dotnet;%%PATH%% && cd /d %~dp0backend\RoomReservationSystem && set ASPNETCORE_URLS=http://0.0.0.0:5000 && dotnet run"
 
 REM Wait up to ~25s for the backend to listen
 echo       Waiting for backend to come online...
