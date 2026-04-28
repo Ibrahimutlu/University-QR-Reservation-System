@@ -11,7 +11,7 @@ async function load() {
     cache = await Api.myReservations(Auth.userId());
     render(cache);
   } catch (err) {
-    listEl.innerHTML = `<div class="empty">⚠️ ${err.message}</div>`;
+    listEl.innerHTML = `<div class="empty">${err.message}</div>`;
   }
 }
 

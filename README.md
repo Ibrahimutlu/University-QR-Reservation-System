@@ -1,9 +1,9 @@
-# 🏛️ RoomLink — University QR Room Reservation System
+# RoomLink — University QR Room Reservation System
 
 > **Course:** Com6064 Software Engineering
-> **Status:** ✅ Demo-ready — three modules integrated, one-click launcher provided.
+> **Status:** Demo-ready — three modules integrated, one-click launcher provided.
 
-A three-tier room reservation platform with **QR-based check-in**.
+A three-tier room reservation platform with QR-based check-in.
 Students, staff and administrators can browse rooms, reserve time slots,
 generate per-booking QR codes, and validate access by scanning either a
 room sticker or a student's reservation QR.
@@ -19,18 +19,18 @@ room sticker or a student's reservation QR.
 
 ---
 
-## 📦 Modules
+## Modules
 
-| Module       | Status | Tech Stack                                                                |
-|--------------|--------|---------------------------------------------------------------------------|
-| **Backend**  | ✅     | ASP.NET Core 5.0 · EF Core · JWT Bearer · QRCoder · Swagger               |
-| **Database** | ✅     | PostgreSQL 14+ (Npgsql provider)                                          |
-| **Frontend** | ✅     | HTML5 · TailwindCSS (CDN) · Vanilla JS · html5-qrcode · No build step     |
-| **QR Layer** | ✅     | Per-reservation QR + per-room door stickers, both rendered server-side    |
+| Module       | Status   | Tech Stack                                                                |
+|--------------|----------|---------------------------------------------------------------------------|
+| **Backend**  | Complete | ASP.NET Core 5.0 · EF Core · JWT Bearer · QRCoder · Swagger               |
+| **Database** | Complete | PostgreSQL 14+ (Npgsql provider)                                          |
+| **Frontend** | Complete | HTML5 · TailwindCSS (CDN) · Vanilla JS · html5-qrcode · No build step     |
+| **QR Layer** | Complete | Per-reservation QR + per-room door stickers, both rendered server-side    |
 
 ---
 
-## 🚀 One-Click Demo (Windows)
+## One-Click Demo (Windows)
 
 The project ships with two batch files at the repo root:
 
@@ -48,7 +48,7 @@ The project ships with two batch files at the repo root:
 
 ---
 
-## 🗂️ Repository Layout
+## Repository Layout
 
 ```
 University-QR-Reservation-System/
@@ -84,7 +84,8 @@ University-QR-Reservation-System/
 ├── database/
 │   ├── README.md
 │   ├── schema.sql            ← 4 tables, FKs, CHECK, composite index
-│   └── seed.sql              ← 4 users, 3 rooms, 3 QR codes
+│   ├── seed.sql              ← 4 users, 3 rooms, 3 QR codes
+│   └── fix-pg-bind.sh        ← one-time WSL Postgres bind fix
 │
 ├── docs/
 │   ├── README.md
@@ -97,7 +98,7 @@ University-QR-Reservation-System/
 
 ---
 
-## 🔐 Demo Accounts
+## Demo Accounts
 
 | Role    | Email                       | Password   |
 |---------|-----------------------------|------------|
@@ -108,11 +109,11 @@ University-QR-Reservation-System/
 
 ---
 
-## 🧭 Demo Walkthrough (5 minutes)
+## Demo Walkthrough (5 minutes)
 
 1. **`start-demo.bat`** — wait until the browser opens.
 2. **Login** as Ahmed → Dashboard with three room cards.
-3. Click **Reserve** on *Lab 101* → pick a time → confirm. Toast: *Reservation confirmed ✓*.
+3. Click **Reserve** on *Lab 101* → pick a time → confirm. Toast: *Reservation confirmed*.
 4. **My Bookings** → click **View QR** → modal shows the per-reservation QR.
 5. Click the **QR** button on a room card → opens a printable door-QR sheet.
 6. Open **Scan QR** in another tab (or your phone) → either:
@@ -122,49 +123,49 @@ University-QR-Reservation-System/
 
 ---
 
-## 🔄 End-to-End Data Flow
+## End-to-End Data Flow
 
 ```
-┌──────────┐  POST /api/auth/login    ┌──────────┐  SELECT user        ┌──────────┐
-│ FRONTEND │ ───{email,password}────▶ │ BACKEND  │ ──WHERE Email=?───▶ │PostgreSQL│
-│          │ ◀────{token,role,id}──── │ +JwtSvc  │ ◀──user row──────── │          │
-└──────────┘                           └──────────┘                      └──────────┘
-     │ stores JWT in localStorage
-     │
-     │ POST /api/reservation/create   (Authorization: Bearer …)
-     ▼
-┌──────────────────────────────────────────────────────────────┐
-│ ReservationController                                        │
-│   • Validate range, ownership                                │
-│   • Overlap check on (RoomID, !Cancelled, half-open range)   │
-│   • INSERT reservation                                       │
-│   • QRService.GenerateReservationQR(...)                     │
-│   • UPDATE reservations.QRCodeData = payload                 │
-│   • Return { reservationID, qrPayload, qrImage(base64 PNG) } │
-└──────────────────────────────────────────────────────────────┘
-     │
-     │ GET /api/qr/validate?qrCodeValue=ROOM-1-LAB101  (door scan)
-     │ POST /api/qr/validate-reservation { payload: "<JSON>" } (phone scan)
-     ▼
-┌──────────────────────────────────────────────────────────────┐
-│ QRController                                                 │
-│   • Look up room QR  OR  parse reservation JSON              │
-│   • Cross-check current time against the reservation window  │
-│   • Cross-check reservation status == "Confirmed"            │
-│   • Return Access granted / denied                           │
-└──────────────────────────────────────────────────────────────┘
++----------+  POST /api/auth/login    +----------+  SELECT user        +----------+
+| FRONTEND | ---{email,password}----> | BACKEND  | --WHERE Email=?---> |PostgreSQL|
+|          | <----{token,role,id}---- | +JwtSvc  | <--user row-------- |          |
++----------+                          +----------+                     +----------+
+     |  stores JWT in localStorage
+     |
+     |  POST /api/reservation/create   (Authorization: Bearer ...)
+     v
++----------------------------------------------------------------+
+| ReservationController                                          |
+|   - Validate range, ownership                                  |
+|   - Overlap check on (RoomID, !Cancelled, half-open range)     |
+|   - INSERT reservation                                         |
+|   - QRService.GenerateReservationQR(...)                       |
+|   - UPDATE reservations.QRCodeData = payload                   |
+|   - Return { reservationID, qrPayload, qrImage(base64 PNG) }   |
++----------------------------------------------------------------+
+     |
+     |  GET /api/qr/validate?qrCodeValue=ROOM-1-LAB101  (door scan)
+     |  POST /api/qr/validate-reservation { payload: "<JSON>" }  (phone scan)
+     v
++----------------------------------------------------------------+
+| QRController                                                   |
+|   - Look up room QR  OR  parse reservation JSON                |
+|   - Cross-check current time against the reservation window    |
+|   - Cross-check reservation status == "Confirmed"              |
+|   - Return Access granted / denied                             |
++----------------------------------------------------------------+
 ```
 
 ---
 
-## 📡 API Reference (high level)
+## API Reference (high level)
 
 | Method | Path                                            | Auth                     |
 |--------|-------------------------------------------------|--------------------------|
 | POST   | `/api/auth/login`                               | Public                   |
 | GET    | `/api/room`                                     | Student / Staff / Admin  |
 | GET    | `/api/room/status/{roomId}`                     | Student / Staff / Admin  |
-| GET    | `/api/room/available-slots/{roomId}?date=…`     | Student / Staff / Admin  |
+| GET    | `/api/room/available-slots/{roomId}?date=...`   | Student / Staff / Admin  |
 | POST   | `/api/room/add`                                 | Admin                    |
 | PUT    | `/api/room/update/{roomId}`                     | Admin                    |
 | DELETE | `/api/room/delete/{roomId}`                     | Admin                    |
@@ -173,27 +174,27 @@ University-QR-Reservation-System/
 | GET    | `/api/reservation/user/{userId}`                | Owner or Admin           |
 | PUT    | `/api/reservation/cancel/{id}`                  | Owner or Admin           |
 | GET    | `/api/qr/room/{roomId}`                         | Student / Staff / Admin  |
-| GET    | `/api/qr/validate?qrCodeValue=…`                | Student / Staff / Admin  |
+| GET    | `/api/qr/validate?qrCodeValue=...`              | Student / Staff / Admin  |
 | POST   | `/api/qr/validate-reservation`                  | Student / Staff / Admin  |
 
 Full request/response schemas live in Swagger at <http://localhost:5000/swagger>.
 
 ---
 
-## 🗄️ Database Schema
+## Database Schema
 
 ```
 users         (UserID PK, FirstName, LastName, Email UNIQUE,
-               Password, Role CHECK ∈ {Student,Admin,Staff}, StudentNumber)
+               Password, Role CHECK in {Student,Admin,Staff}, StudentNumber)
 
 rooms         (RoomID PK, RoomName, RoomType, Capacity,
                Location, IsAvailable, QRCode)
 
-reservations  (ReservationID PK, UserID FK→users, RoomID FK→rooms,
+reservations  (ReservationID PK, UserID FK->users, RoomID FK->rooms,
                ReservationDate, StartTime, EndTime,
                Status, CreatedAt, QRCodeData)
 
-qr_codes      (QRID PK, RoomID FK→rooms UNIQUE, QRCodeValue, IsActive)
+qr_codes      (QRID PK, RoomID FK->rooms UNIQUE, QRCodeValue, IsActive)
 
 INDEX idx_reservations_conflict_check
       ON reservations (RoomID, Status, StartTime, EndTime)
@@ -201,14 +202,14 @@ INDEX idx_reservations_conflict_check
 
 ---
 
-## 🧪 Manual Test Scenarios
+## Manual Test Scenarios
 
 Detailed scenarios (booking, conflict detection, cancellation, scanner, role separation, admin CRUD) are in [`docs/Report5-DatabaseAndIntegration.pdf`](docs/Report5-DatabaseAndIntegration.pdf).
 TL;DR — all six scenarios pass on a fresh `start-demo.bat` run.
 
 ---
 
-## 👥 Module Owners
+## Module Owners
 
 | Area                                | Owner          |
 |-------------------------------------|----------------|
@@ -219,7 +220,7 @@ TL;DR — all six scenarios pass on a fresh `start-demo.bat` run.
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 - `docs/Report1-*.pdf` — Initial design / requirements
 - `docs/Report2-*.pdf` — Conflict-control algorithm
@@ -229,6 +230,6 @@ TL;DR — all six scenarios pass on a fresh `start-demo.bat` run.
 
 ---
 
-## ⚖️ License
+## License
 
 Academic project — for coursework demonstration only.

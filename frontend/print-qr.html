@@ -51,9 +51,9 @@
     <div id="loading" class="text-slate-500">Loading…</div>
 
     <div id="card" class="sheet hidden">
-      <div class="text-3xl mb-2">🚪</div>
+      <div class="text-xs uppercase tracking-widest text-indigo-600 font-semibold mb-2">Door QR</div>
       <h1 id="title">Room Name</h1>
-      <p class="meta"><span id="type"></span> · <span id="location"></span></p>
+      <p class="meta"><span id="type"></span> &middot; <span id="location"></span></p>
 
       <div class="qr">
         <img id="qr-img" alt="Door QR code"/>
@@ -67,13 +67,13 @@
       </p>
 
       <div class="actions">
-        <button class="btn-primary"   onclick="window.print()">🖨️ Print</button>
-        <button class="btn-secondary" onclick="window.history.back()">← Back</button>
+        <button class="btn-primary"   onclick="window.print()">Print</button>
+        <button class="btn-secondary" onclick="window.history.back()">Back</button>
       </div>
     </div>
 
     <div id="error" class="card p-6 hidden text-center">
-      <div class="text-3xl mb-2">⚠️</div>
+      <div class="text-3xl mb-2">!</div>
       <h2 class="text-lg font-semibold text-slate-900 mb-1">Couldn't load QR</h2>
       <p id="error-msg" class="text-sm text-slate-500"></p>
       <a href="dashboard.html" class="btn-primary mt-4 inline-block">Back to dashboard</a>

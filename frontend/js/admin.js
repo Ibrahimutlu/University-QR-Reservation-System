@@ -32,7 +32,7 @@ async function load() {
         </td>
       </tr>`).join("");
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-red-500 py-8">⚠️ ${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-red-500 py-8">${err.message}</td></tr>`;
   }
 }
 

@@ -9,10 +9,11 @@ PostgreSQL 14+ schema for RoomLink.
 
 ## Files
 
-| File         | Purpose                                                                                       |
-|--------------|-----------------------------------------------------------------------------------------------|
-| `schema.sql` | DROP + CREATE the four tables, foreign keys, CHECK constraints, and the overlap index.        |
-| `seed.sql`   | Idempotent inserts: 4 users (Student / Admin / Staff / Student), 3 rooms, 3 room-level QR codes. |
+| File              | Purpose                                                                                       |
+|-------------------|-----------------------------------------------------------------------------------------------|
+| `schema.sql`      | DROP + CREATE the four tables, foreign keys, CHECK constraints, and the overlap index.        |
+| `seed.sql`        | Idempotent inserts: 4 users (Student / Admin / Staff / Student), 3 rooms, 3 room-level QR codes. |
+| `fix-pg-bind.sh`  | One-time WSL fix: makes Postgres listen on `*` so the .NET backend on Windows can reach it.  |
 
 ---
 
@@ -26,7 +27,7 @@ PGPASSWORD=postgres psql -U postgres -h localhost -d RoomReservationDB -f schema
 PGPASSWORD=postgres psql -U postgres -h localhost -d RoomReservationDB -f seed.sql
 ```
 
-## Windows ↔ WSL bind fix
+## Windows / WSL bind fix
 
 If you run the .NET backend on **Windows** and PostgreSQL inside **WSL2**,
 Windows-localhost calls to port 5432 may be refused because Postgres binds
@@ -54,19 +55,19 @@ PGPASSWORD=postgres psql -U postgres -h localhost -d RoomReservationDB \
 ## Schema diagram
 
 ```
-users         ───────∞  reservations  ∞───────  rooms
-                                                  │
-                                                  │ 1:1
-                                                  ▼
+users         ----------(N)  reservations  (N)----------  rooms
+                                                  |
+                                                  | 1:1
+                                                  v
                                                 qr_codes
 ```
 
 | Table          | Purpose                                | Key constraints                               |
 |----------------|----------------------------------------|-----------------------------------------------|
-| `users`        | Auth principals (Student/Staff/Admin)  | UNIQUE Email · CHECK Role                     |
-| `rooms`        | Bookable resources                     | Capacity ≥ 1                                  |
-| `reservations` | Time-bound bookings                    | FK on UserID/RoomID · `idx_reservations_conflict_check` |
-| `qr_codes`     | Per-room door stickers                 | UNIQUE RoomID (1:1) · ON DELETE CASCADE       |
+| `users`        | Auth principals (Student/Staff/Admin)  | UNIQUE Email, CHECK Role                      |
+| `rooms`        | Bookable resources                     | Capacity >= 1                                 |
+| `reservations` | Time-bound bookings                    | FK on UserID/RoomID, `idx_reservations_conflict_check` |
+| `qr_codes`     | Per-room door stickers                 | UNIQUE RoomID (1:1), ON DELETE CASCADE        |
 
 ---
 
@@ -78,7 +79,7 @@ CREATE INDEX idx_reservations_conflict_check
 ```
 
 Optimises the half-open interval overlap query that runs on every reservation
-creation. Column order matches the WHERE-clause selectivity (most → least
+creation. Column order matches the WHERE-clause selectivity (most to least
 selective), so the index serves both the conflict check and any
 "per-room agenda" listings without an extra index.
 
@@ -86,9 +87,9 @@ selective), so the index serves both the conflict check and any
 
 ## Seeded test data
 
-| Users                                   | Rooms                                  | QR codes              |
-|-----------------------------------------|----------------------------------------|-----------------------|
-| Ahmed Ali (Student)                     | Lab 101 — Building A — capacity 30     | `ROOM-1-LAB101`       |
-| Admin User (Admin)                      | Classroom 201 — Building B — capacity 50 | `ROOM-2-CLASSROOM201` |
-| Sara Khan (Student)                     | Meeting Room A — Building C — capacity 1 | `ROOM-3-MEETINGROOMA` |
-| Sara Mohamed (Staff)                    |                                        |                       |
+| Users                | Rooms                                | QR codes              |
+|----------------------|--------------------------------------|-----------------------|
+| Ahmed Ali (Student)  | Lab 101, Building A, capacity 30     | `ROOM-1-LAB101`       |
+| Admin User (Admin)   | Classroom 201, Building B, capacity 50 | `ROOM-2-CLASSROOM201` |
+| Sara Khan (Student)  | Meeting Room A, Building C, capacity 1 | `ROOM-3-MEETINGROOMA` |
+| Sara Mohamed (Staff) |                                      |                       |

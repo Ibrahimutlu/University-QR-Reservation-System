@@ -69,7 +69,7 @@ room sticker.
 There are three QR-display flows in the system:
 
 1. **Reservation QR (the student's "ticket")** — generated automatically
-   when the booking is created. View it under **My Bookings → View QR**.
+   when the booking is created. View it under **My Bookings -> View QR**.
    The modal shows the QR PNG ready to be scanned.
 
 2. **Door sticker QR (admin / signage)** — open `print-qr.html?room=1` (or

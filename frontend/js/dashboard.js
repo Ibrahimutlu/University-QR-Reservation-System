@@ -13,7 +13,7 @@ async function loadRooms() {
     allRooms = await Api.listRooms();
     renderRooms(allRooms);
   } catch (err) {
-    grid.innerHTML = `<div class="empty col-span-full">⚠️ ${err.message}</div>`;
+    grid.innerHTML = `<div class="empty col-span-full">${err.message}</div>`;
   }
 }
 
@@ -30,23 +30,19 @@ function roomCard(r) {
     ? "bg-emerald-50 text-emerald-700 border-emerald-200"
     : "bg-slate-100 text-slate-500 border-slate-200";
   const badgeText = r.isAvailable ? "Available" : "Full";
-  const typeIcon = r.roomType?.toLowerCase().includes("lab") ? "🧪"
-                 : r.roomType?.toLowerCase().includes("class") ? "📚"
-                 : r.roomType?.toLowerCase().includes("meet") ? "💼"
-                 : "🏛️";
 
   return `
     <div class="card card-hoverable p-5">
       <div class="flex items-start justify-between mb-3">
-        <div class="text-3xl leading-none">${typeIcon}</div>
+        <div class="text-xs font-semibold uppercase tracking-wide text-indigo-600">${r.roomType}</div>
         <span class="text-xs font-semibold px-2 py-1 rounded-full border ${badgeClass}">${badgeText}</span>
       </div>
       <h3 class="text-lg font-semibold text-slate-900 mb-1">${r.roomName}</h3>
-      <p class="text-sm text-slate-500 mb-4">${r.roomType} · ${r.location}</p>
+      <p class="text-sm text-slate-500 mb-4">${r.location}</p>
 
       <div class="flex items-center gap-4 text-xs text-slate-600 mb-4">
-        <span>👥 Capacity: <strong class="text-slate-900">${r.capacity}</strong></span>
-        <span>🆔 #${r.roomID}</span>
+        <span>Capacity: <strong class="text-slate-900">${r.capacity}</strong></span>
+        <span>ID: <strong class="text-slate-900">#${r.roomID}</strong></span>
       </div>
 
       <div class="flex gap-2">
@@ -137,7 +133,7 @@ window.openBooking = function (roomId) {
     try {
       await Api.createReservation(payload);
       closeBooking();
-      toast("Reservation confirmed ✓", "success");
+      toast("Reservation confirmed", "success");
       // Soft-refresh so capacity flips reflect.
       loadRooms();
     } catch (err) {
