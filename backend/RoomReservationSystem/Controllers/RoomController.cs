@@ -217,6 +217,25 @@ namespace RoomReservationSystem.Controllers
             if (room == null)
                 return NotFound("Room does not exist");
 
+            // Check if room has any active reservations
+            bool hasActiveReservations = _context.Reservations.Any(r =>
+                r.RoomID == roomId &&
+                r.Status != "Cancelled");
+
+            if (hasActiveReservations)
+                return BadRequest("Cannot delete a room that has active reservations. Cancel all reservations first.");
+
+            // Delete all cancelled reservations for this room
+            var cancelledReservations = _context.Reservations
+                .Where(r => r.RoomID == roomId)
+                .ToList();
+            _context.Reservations.RemoveRange(cancelledReservations);
+
+            // Remove QR code if exists
+            var qr = _context.QRCodes.FirstOrDefault(q => q.RoomID == roomId);
+            if (qr != null)
+                _context.QRCodes.Remove(qr);
+
             _context.Rooms.Remove(room);
             _context.SaveChanges();
 
