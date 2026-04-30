@@ -53,6 +53,52 @@ namespace RoomReservationSystem.Controllers
             });
         }
 
+
+        [HttpPost("create/{roomId}")]
+        [Authorize(Roles = "Admin")]
+        public IActionResult CreateRoomQR(int roomId)
+        {
+            var room = _context.Rooms.FirstOrDefault(r => r.RoomID == roomId);
+            if (room == null)
+                return NotFound(new { message = "Room does not exist" });
+
+            var existingQR = _context.QRCodes.FirstOrDefault(q => q.RoomID == roomId);
+            if (existingQR != null)
+                return Ok(new
+                {
+                    message = "QR code already exists for this room",
+                    roomID = room.RoomID,
+                    roomName = room.RoomName,
+                    qrCodeValue = existingQR.QRCodeValue,
+                    isActive = existingQR.IsActive,
+                    qrImage = _qrService.GenerateFromString(existingQR.QRCodeValue)
+                });
+
+            string qrCodeValue = $"ROOM-{room.RoomID}-{room.RoomName.Replace(" ", "").ToUpper()}";
+
+            string qrImage = _qrService.GenerateFromString(qrCodeValue);
+
+            var qr = new RoomReservationSystem.Models.QR
+            {
+                RoomID = roomId,
+                QRCodeValue = qrCodeValue,
+                IsActive = true
+            };
+
+            _context.QRCodes.Add(qr);
+            _context.SaveChanges();
+
+            return Ok(new
+            {
+                message = "QR code created successfully",
+                roomID = room.RoomID,
+                roomName = room.RoomName,
+                qrCodeValue = qrCodeValue,
+                isActive = true,
+                qrImage = qrImage
+            });
+        }
+
         // ──────────────────────────────────────────────────────────────────
         // Validate a ROOM-LEVEL QR (the static sticker on the door).
         // The caller is authenticated; the userId is taken from the JWT.
