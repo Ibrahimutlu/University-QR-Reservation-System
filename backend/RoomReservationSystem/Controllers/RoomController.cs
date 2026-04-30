@@ -17,6 +17,7 @@ namespace RoomReservationSystem.Controllers
         {
             _context = context;
         }
+
         [HttpGet("available-slots/{roomId}")]
         [Authorize(Roles = "Student,Staff,Admin")]
         public IActionResult GetAvailableSlots(int roomId, [FromQuery] DateTime date)
@@ -26,7 +27,6 @@ namespace RoomReservationSystem.Controllers
             if (room == null)
                 return NotFound("Room does not exist in the system");
 
-            // Get all confirmed reservations for this room on this date
             var bookedSlots = _context.Reservations
                 .Where(r => r.RoomID == roomId &&
                        r.ReservationDate.Date == date.Date &&
@@ -39,11 +39,9 @@ namespace RoomReservationSystem.Controllers
                 .OrderBy(r => r.StartTime)
                 .ToList();
 
-            // Define working hours 8am to 8pm
             var workingStart = date.Date.AddHours(8);
             var workingEnd = date.Date.AddHours(20);
 
-            // Find available slots
             var availableSlots = new System.Collections.Generic.List<object>();
             var currentTime = workingStart;
 
@@ -61,7 +59,6 @@ namespace RoomReservationSystem.Controllers
                 currentTime = booked.EndTime;
             }
 
-            // Add remaining time after last booking
             if (currentTime < workingEnd)
             {
                 availableSlots.Add(new
@@ -139,6 +136,36 @@ namespace RoomReservationSystem.Controllers
 
             if (rooms == null || rooms.Count == 0)
                 return NotFound("No rooms found");
+
+            return Ok(rooms);
+        }
+
+        [HttpGet("search")]
+        [Authorize(Roles = "Student,Staff,Admin")]
+        public IActionResult SearchRooms(
+            [FromQuery] string? type,
+            [FromQuery] int? minCapacity,
+            [FromQuery] string? location,
+            [FromQuery] bool? isAvailable)
+        {
+            var query = _context.Rooms.AsQueryable();
+
+            if (!string.IsNullOrEmpty(type))
+                query = query.Where(r => r.RoomType.ToLower() == type.ToLower());
+
+            if (minCapacity.HasValue)
+                query = query.Where(r => r.Capacity >= minCapacity.Value);
+
+            if (!string.IsNullOrEmpty(location))
+                query = query.Where(r => r.Location.ToLower().Contains(location.ToLower()));
+
+            if (isAvailable.HasValue)
+                query = query.Where(r => r.IsAvailable == isAvailable.Value);
+
+            var rooms = query.OrderBy(r => r.RoomName).ToList();
+
+            if (rooms.Count == 0)
+                return NotFound("No rooms found matching the search criteria");
 
             return Ok(rooms);
         }
