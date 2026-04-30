@@ -20,19 +20,15 @@ namespace RoomReservationSystem.Controllers
             _jwtService = jwtService;
         }
 
-      
-
         [HttpPost("login")]
         public IActionResult Login([FromBody] LoginRequest user)
         {
             if (user == null)
                 return BadRequest("Invalid login details");
 
-            var existingUser = _context.Users.FirstOrDefault(u =>
-                u.Email == user.Email &&
-                u.Password == user.Password);
+            var existingUser = _context.Users.FirstOrDefault(u => u.Email == user.Email);
 
-            if (existingUser == null)
+            if (existingUser == null || existingUser.Password != user.Password)
                 return Unauthorized("Invalid email or password");
 
             var token = _jwtService.GenerateToken(existingUser);
@@ -43,6 +39,49 @@ namespace RoomReservationSystem.Controllers
                 token = token,
                 role = existingUser.Role,
                 userID = existingUser.UserID
+            });
+        }
+
+        [HttpPost("register")]
+        [Authorize(Roles = "Admin")]
+        public IActionResult Register([FromBody] RegisterRequest request)
+        {
+            if (request == null)
+                return BadRequest("Invalid registration details");
+
+            if (string.IsNullOrEmpty(request.FirstName) ||
+                string.IsNullOrEmpty(request.LastName) ||
+                string.IsNullOrEmpty(request.Email) ||
+                string.IsNullOrEmpty(request.Password) ||
+                string.IsNullOrEmpty(request.Role))
+                return BadRequest("All fields are required");
+
+            var validRoles = new[] { "Student", "Staff", "Admin" };
+            if (!validRoles.Contains(request.Role))
+                return BadRequest("Role must be Student, Staff, or Admin");
+
+            if (_context.Users.Any(u => u.Email == request.Email))
+                return BadRequest("A user with this email already exists");
+
+            var user = new User
+            {
+                FirstName = request.FirstName,
+                LastName = request.LastName,
+                Email = request.Email,
+                Password = request.Password,
+                Role = request.Role,
+                StudentNumber = request.StudentNumber
+            };
+
+            _context.Users.Add(user);
+            _context.SaveChanges();
+
+            return Ok(new
+            {
+                message = "User registered successfully",
+                userID = user.UserID,
+                email = user.Email,
+                role = user.Role
             });
         }
     }
