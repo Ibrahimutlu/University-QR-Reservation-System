@@ -54,15 +54,23 @@ namespace RoomReservationSystem.Controllers
 
             // Overlap detection (Report 2 §3.3): half-open interval test against
             // any reservation for the same room that has not been cancelled.
-            bool overlaps = _context.Reservations.Any(r =>
-                r.RoomID == reservation.RoomID &&
+            int overlaps = _context.Reservations.Count(r =>
+    r.RoomID == reservation.RoomID &&
+    r.Status != "Cancelled" &&
+    r.StartTime < reservation.EndTime &&
+    r.EndTime   > reservation.StartTime);
+
+if (overlaps >= room.Capacity)
+    return BadRequest("Room is fully booked for the selected time slot");
+
+            bool userConflict = _context.Reservations.Any(r =>
+                r.UserID == reservation.UserID &&
                 r.Status != "Cancelled" &&
                 r.StartTime < reservation.EndTime &&
-                r.EndTime   > reservation.StartTime);
+                r.EndTime > reservation.StartTime);
 
-            if (overlaps)
-                return BadRequest("Room is not available for the selected time slot");
-
+            if (userConflict)
+                return BadRequest("You already have a reservation at this time");
             // Persist the reservation so we have an ID, then generate the QR
             // (the QR payload references the reservation ID).
             reservation.Status    = "Confirmed";
@@ -254,5 +262,126 @@ namespace RoomReservationSystem.Controllers
 
             return Ok(new { message = "Reservation cancelled successfully" });
         }
+
+
+        [HttpPut("update/{reservationId}")]
+        [Authorize(Roles = "Student,Staff,Admin")]
+        public IActionResult UpdateReservation(int reservationId, [FromBody] UpdateReservationRequest request)
+        {
+            var reservation = _context.Reservations.FirstOrDefault(r => r.ReservationID == reservationId);
+
+            if (reservation == null)
+                return NotFound("Reservation does not exist");
+
+            var loggedInUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var userRole = User.FindFirst(ClaimTypes.Role).Value;
+
+            if (userRole != "Admin" && reservation.UserID != loggedInUserId)
+                return BadRequest("You can only update your own reservation");
+
+            if (reservation.Status == "Cancelled")
+                return BadRequest("Cannot reschedule a cancelled reservation");
+
+            if (request.EndTime <= request.StartTime)
+                return BadRequest("End time must be after start time");
+
+            if (request.ReservationDate < DateTime.Today)
+                return BadRequest("Cannot reschedule to a past date");
+
+            if (request.StartTime < DateTime.Now)
+                return BadRequest("Cannot reschedule to a past time");
+
+            var room = _context.Rooms.FirstOrDefault(r => r.RoomID == reservation.RoomID);
+
+            // Check capacity at new time slot (excluding current reservation)
+            int overlaps = _context.Reservations.Count(r =>
+                r.RoomID == reservation.RoomID &&
+                r.ReservationID != reservationId &&
+                r.Status != "Cancelled" &&
+                r.StartTime < request.EndTime &&
+                r.EndTime > request.StartTime);
+
+            if (overlaps >= room.Capacity)
+                return BadRequest("Room is fully booked for the requested time slot");
+
+            // Check user doesn't have another booking at new time
+            bool userConflict = _context.Reservations.Any(r =>
+                r.UserID == reservation.UserID &&
+                r.ReservationID != reservationId &&
+                r.Status != "Cancelled" &&
+                r.StartTime < request.EndTime &&
+                r.EndTime > request.StartTime);
+
+            if (userConflict)
+                return BadRequest("You already have another reservation at this time");
+
+            // Apply updates
+            reservation.ReservationDate = request.ReservationDate;
+            reservation.StartTime = request.StartTime;
+            reservation.EndTime = request.EndTime;
+
+            // Regenerate QR code with new times
+            var qr = _qrService.GenerateReservationQR(
+                reservation.ReservationID,
+                reservation.RoomID,
+                reservation.UserID,
+                reservation.StartTime,
+                reservation.EndTime);
+
+            reservation.QRCodeData = qr.Payload;
+            _context.SaveChanges();
+
+            return Ok(new
+            {
+                message = "Reservation updated successfully",
+                reservationID = reservation.ReservationID,
+                status = reservation.Status,
+                qrPayload = qr.Payload,
+                qrImage = qr.ImageDataUrl
+            });
+        }
+
+
+        [HttpGet("all")]
+        [Authorize(Roles = "Admin")]
+        public IActionResult GetAllReservations()
+        {
+            var reservations = _context.Reservations
+                .OrderByDescending(r => r.StartTime)
+                .Select(r => new
+                {
+                    r.ReservationID,
+                    r.UserID,
+                    r.RoomID,
+                    r.ReservationDate,
+                    r.StartTime,
+                    r.EndTime,
+                    r.Status,
+                    r.CreatedAt,
+                    Room = new
+                    {
+                        r.Room.RoomID,
+                        r.Room.RoomName,
+                        r.Room.RoomType,
+                        r.Room.Location,
+                        r.Room.Capacity
+                    },
+                    User = new
+                    {
+                        r.User.UserID,
+                        r.User.FirstName,
+                        r.User.LastName,
+                        r.User.Email,
+                        r.User.Role
+                    }
+                })
+                .ToList();
+
+            if (reservations.Count == 0)
+                return Ok(new object[] { });
+
+            return Ok(reservations);
+        }
     }
+
 }
