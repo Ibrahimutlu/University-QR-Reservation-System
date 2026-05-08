@@ -5,6 +5,7 @@
 -- ============================================================================
 
 -- Drop existing tables if re-initializing
+DROP TABLE IF EXISTS scan_logs CASCADE;
 DROP TABLE IF EXISTS qr_codes CASCADE;
 DROP TABLE IF EXISTS reservations CASCADE;
 DROP TABLE IF EXISTS rooms CASCADE;
@@ -60,4 +61,16 @@ CREATE TABLE qr_codes (
     "RoomID"        INTEGER NOT NULL UNIQUE REFERENCES rooms("RoomID") ON DELETE CASCADE,
     "QRCodeValue"   TEXT NOT NULL,
     "IsActive"      BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+-- ─── Scan Logs ──────────────────────────────────────────────────────────────
+-- Maps to: ScanLog model — stores history of every QR scan at room entry points
+CREATE TABLE scan_logs (
+    "ScanLogID"     SERIAL PRIMARY KEY,
+    "UserID"        INTEGER NOT NULL REFERENCES users("UserID") ON DELETE RESTRICT,
+    "RoomID"        INTEGER NOT NULL REFERENCES rooms("RoomID") ON DELETE RESTRICT,
+    "ReservationID" INTEGER REFERENCES reservations("ReservationID") ON DELETE SET NULL,
+    "ScanTime"      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "ScanType"      VARCHAR(10) NOT NULL CHECK ("ScanType" IN ('CheckIn', 'CheckOut')),
+    "AccessGranted" BOOLEAN NOT NULL DEFAULT FALSE
 );
