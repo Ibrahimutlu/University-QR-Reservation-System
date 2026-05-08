@@ -62,6 +62,33 @@ namespace RoomReservationSystem.Services
             string base64 = base64QrCode.GetGraphic(10);
             return "data:image/png;base64," + base64;
         }
+
+        public string GenerateDynamicQRValue(int roomId)
+        {
+            var now = DateTime.UtcNow;
+            var timeWindow = new DateTime(now.Year, now.Month, now.Day, now.Hour, (now.Minute / 2) * 2, 0);
+            string secret = "RoomReservationSystemSecretKey12345678901234567890";
+            string raw = $"ROOM-{roomId}-{timeWindow:yyyyMMddHHmm}-{secret}";
+            using var sha256 = System.Security.Cryptography.SHA256.Create();
+            var bytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(raw));
+            string hash = Convert.ToBase64String(bytes).Replace("/", "_").Replace("+", "-").Replace("=", "");
+            return $"DYN-{roomId}-{hash}";
+        }
+
+        public bool ValidateDynamicQRValue(int roomId, string qrValue)
+        {
+            string currentQR = GenerateDynamicQRValue(roomId);
+            if (currentQR == qrValue) return true;
+
+            var now = DateTime.UtcNow.AddMinutes(-2);
+            var timeWindow = new DateTime(now.Year, now.Month, now.Day, now.Hour, (now.Minute / 2) * 2, 0);
+            string secret = "RoomReservationSystemSecretKey12345678901234567890";
+            string raw = $"ROOM-{roomId}-{timeWindow:yyyyMMddHHmm}-{secret}";
+            using var sha256 = System.Security.Cryptography.SHA256.Create();
+            var bytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(raw));
+            string previousQR = $"DYN-{roomId}-{Convert.ToBase64String(bytes).Replace("/", "_").Replace("+", "-").Replace("=", "")}";
+            return previousQR == qrValue;
+        }
     }
 
     public class QRGenerationResult
