@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RoomReservationSystem.Data;
+using RoomReservationSystem.Models;
 using RoomReservationSystem.Services;
 using System;
 using System.Linq;
@@ -159,6 +160,69 @@ namespace RoomReservationSystem.Controllers
                 roomID = roomId,
                 userID = userId,
                 reservationID = reservation.ReservationID
+            });
+        }
+
+        // POST /api/qr/scan
+        // Records a scan and checks if user has a valid reservation
+        [HttpPost("scan")]
+        [Authorize(Roles = "Student,Staff,Admin")]
+        public IActionResult Scan([FromBody] ScanRequest request)
+        {
+            if (request == null)
+                return BadRequest(new { message = "Invalid scan request" });
+
+            var user = _context.Users.FirstOrDefault(u => u.UserID == request.UserID);
+            if (user == null)
+                return NotFound(new { message = "User not found" });
+
+            var room = _context.Rooms.FirstOrDefault(r => r.RoomID == request.RoomID);
+            if (room == null)
+                return NotFound(new { message = "Room not found" });
+
+            var now = request.ScanTime;
+
+            // Check if user has a valid reservation for this room at scan time
+            var reservation = _context.Reservations.FirstOrDefault(r =>
+                r.RoomID == request.RoomID &&
+                r.UserID == request.UserID &&
+                r.Status == "Confirmed" &&
+                r.StartTime <= now &&
+                r.EndTime >= now);
+
+            bool accessGranted = reservation != null;
+
+            // Save scan log to database
+            var scanLog = new ScanLog
+            {
+                UserID = request.UserID,
+                RoomID = request.RoomID,
+                ReservationID = reservation?.ReservationID,
+                ScanTime = request.ScanTime,
+                ScanType = request.ScanType ?? "CheckIn",
+                AccessGranted = accessGranted
+            };
+
+            _context.ScanLogs.Add(scanLog);
+            _context.SaveChanges();
+
+            if (!accessGranted)
+                return BadRequest(new
+                {
+                    message = "Access denied",
+                    reason = "No valid reservation found for this room at this time",
+                    scanLogID = scanLog.ScanLogID
+                });
+
+            return Ok(new
+            {
+                message = "Access granted",
+                roomID = request.RoomID,
+                roomName = room.RoomName,
+                userID = request.UserID,
+                reservationID = reservation.ReservationID,
+                scanType = request.ScanType,
+                scanLogID = scanLog.ScanLogID
             });
         }
         // ──────────────────────────────────────────────────────────────────
