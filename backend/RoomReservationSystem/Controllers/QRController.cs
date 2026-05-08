@@ -99,6 +99,68 @@ namespace RoomReservationSystem.Controllers
             });
         }
 
+        // GET /api/qr/dynamic/{roomId}
+        // Returns the current dynamic QR code for a room (changes every 2 minutes)
+        [HttpGet("dynamic/{roomId}")]
+        [Authorize(Roles = "Student,Staff,Admin")]
+        public IActionResult GetDynamicQR(int roomId)
+        {
+            var room = _context.Rooms.FirstOrDefault(r => r.RoomID == roomId);
+            if (room == null)
+                return NotFound(new { message = "Room does not exist" });
+
+            string qrValue = _qrService.GenerateDynamicQRValue(roomId);
+            string qrImage = _qrService.GenerateFromString(qrValue);
+
+            return Ok(new
+            {
+                roomID = room.RoomID,
+                roomName = room.RoomName,
+                qrValue = qrValue,
+                qrImage = qrImage,
+                validFor = "2 minutes",
+                generatedAt = DateTime.UtcNow
+            });
+        }
+
+        // GET /api/qr/validate-dynamic
+        // Validates a dynamic QR code scanned by a student
+        [HttpGet("validate-dynamic")]
+        [Authorize(Roles = "Student,Staff,Admin")]
+        public IActionResult ValidateDynamicQR([FromQuery] string qrValue, [FromQuery] int roomId)
+        {
+            if (string.IsNullOrEmpty(qrValue))
+                return BadRequest(new { message = "Invalid QR code" });
+
+            bool isValid = _qrService.ValidateDynamicQRValue(roomId, qrValue);
+            if (!isValid)
+                return BadRequest(new { message = "QR code is invalid or expired" });
+
+            int userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier).Value);
+            var now = DateTime.Now;
+
+            var reservation = _context.Reservations.FirstOrDefault(r =>
+                r.RoomID == roomId &&
+                r.UserID == userId &&
+                r.Status == "Confirmed" &&
+                r.StartTime <= now &&
+                r.EndTime >= now);
+
+            if (reservation == null)
+                return BadRequest(new
+                {
+                    message = "Access denied",
+                    reason = "No valid reservation found for this room at this time"
+                });
+
+            return Ok(new
+            {
+                message = "Access granted",
+                roomID = roomId,
+                userID = userId,
+                reservationID = reservation.ReservationID
+            });
+        }
         // ──────────────────────────────────────────────────────────────────
         // Validate a ROOM-LEVEL QR (the static sticker on the door).
         // The caller is authenticated; the userId is taken from the JWT.
