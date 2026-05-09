@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reservation Details</title>
+    <link rel="stylesheet" href="reservation-details.css" />
+</head>
+<body>
+    <div class="page-bg"></div>
+
+    <header class="site-header">
+        <div class="container header-container">
+            <div class="brand">
+                <div class="brand-badge">QR</div>
+                <div class="brand-text">
+                    <h1>QR-Integrated University Room Reservation System</h1>
+                    <p>Reservation Details</p>
+                </div>
+            </div>
+
+            <nav class="navbar">
+                <a class="nav-link" href="rooms.html">Rooms</a>
+                <a class="nav-link" href="reserve.html">Reserve</a>
+                <a class="nav-link" href="my-reservations.html">My Reservations</a>
+                <a class="nav-link active" href="reservation-details.html">Details</a>
+                <a id="adminNavLink" class="nav-link hidden" href="admin-dashboard.html">Dashboard</a>
+                <button id="logoutBtn" class="secondary-btn" type="button">Logout</button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <section class="page-intro">
+            <div class="container">
+                <div class="intro-card reveal">
+                    <div>
+                        <p class="section-label">Reservation</p>
+                        <h2>Reservation Details</h2>
+                        <p class="intro-text">
+                            View complete reservation information and current status.
+                        </p>
+                    </div>
+
+                    <div class="intro-actions">
+                        <a href="my-reservations.html" class="secondary-btn">Back to My Reservations</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="details-section">
+            <div class="container details-layout">
+                <div class="details-panel reveal delay-1">
+                    <div class="panel-header">
+                        <div>
+                            <p class="section-label">Details</p>
+                            <h3>Reservation Information</h3>
+                        </div>
+                        <span id="statusBadge" class="status-badge status-pending">Pending</span>
+                    </div>
+
+                    <div id="loadingState" class="loading-state">
+                        <div class="spinner"></div>
+                        <p>Loading reservation details...</p>
+                    </div>
+
+                    <div id="detailsContent" class="details-grid hidden">
+                        <div class="detail-card">
+                            <span>Reservation ID</span>
+                            <strong id="reservationId">—</strong>
+                        </div>
+
+                        <div class="detail-card">
+                            <span>Room</span>
+                            <strong id="roomName">—</strong>
+                        </div>
+
+                        <div class="detail-card">
+                            <span>Reservation Date</span>
+                            <strong id="reservationDate">—</strong>
+                        </div>
+
+                        <div class="detail-card">
+                            <span>Start Time</span>
+                            <strong id="startTime">—</strong>
+                        </div>
+
+                        <div class="detail-card">
+                            <span>End Time</span>
+                            <strong id="endTime">—</strong>
+                        </div>
+
+                        <div class="detail-card">
+                            <span>Status</span>
+                            <strong id="statusText">—</strong>
+                        </div>
+
+                        <div class="detail-card">
+                            <span>Created At</span>
+                            <strong id="createdAt">—</strong>
+                        </div>
+                    </div>
+
+                    <div id="messageBox" class="message-box hidden">
+                        <div class="message-icon" id="messageIcon">!</div>
+                        <div class="message-content">
+                            <h4 id="messageTitle">Message</h4>
+                            <p id="messageText"></p>
+                        </div>
+                    </div>
+
+                    <div class="action-row hidden" id="actionRow">
+                        <button id="cancelBtn" class="danger-btn">Cancel Reservation</button>
+                    </div>
+                </div>
+
+                <aside class="summary-panel reveal delay-2">
+                    <div class="panel-header">
+                        <div>
+                            <p class="section-label">Summary</p>
+                            <h3>Quick Overview</h3>
+                        </div>
+                    </div>
+
+                    <div class="summary-card">
+                        <div class="summary-row">
+                            <span>Reservation ID</span>
+                            <strong id="summaryReservationId">—</strong>
+                        </div>
+
+                        <div class="summary-row">
+                            <span>Room</span>
+                            <strong id="summaryRoomName">—</strong>
+                        </div>
+
+                        <div class="summary-row">
+                            <span>Status</span>
+                            <strong id="summaryStatus">—</strong>
+                        </div>
+
+                        <div class="summary-row">
+                            <span>Start</span>
+                            <strong id="summaryStart">—</strong>
+                        </div>
+
+                        <div class="summary-row">
+                            <span>End</span>
+                            <strong id="summaryEnd">—</strong>
+                        </div>
+                    </div>
+
+                    <div class="qr-panel">
+                        <div class="qr-panel-header">
+                            <div>
+                                <p class="section-label">QR Access</p>
+                                <h3>Access QR Code</h3>
+                                <p class="qr-panel-subtitle">Quick access for the reserved room.</p>
+                            </div>
+                        </div>
+
+                        <div class="qr-card professional-qr-card">
+                            <div class="qr-preview-side">
+                                <div class="qr-visual-wrap">
+                                    <div class="qr-box" id="qrBox">
+                                        <span id="qrFallbackText">QR</span>
+                                        <img id="qrImage" class="qr-image hidden" alt="Reservation QR Code" />
+                                    </div>
+                                </div>
+
+                                <p id="qrMessage" class="qr-helper-text">
+                                    QR will appear here.
+                                </p>
+                            </div>
+
+                            <div class="qr-info-side">
+                                <div class="qr-info-grid">
+                                    <div class="qr-info-item">
+                                        <span class="qr-info-label">Status</span>
+                                        <strong id="qrStatus">Not Available</strong>
+                                    </div>
+
+                                    <div class="qr-info-item">
+                                        <span class="qr-info-label">Type</span>
+                                        <strong id="qrExpiry">—</strong>
+                                    </div>
+
+                                    <div class="qr-info-item">
+                                        <span class="qr-info-label">Reservation ID</span>
+                                        <strong id="qrReservationIdText">—</strong>
+                                    </div>
+
+                                    <div class="qr-info-item">
+                                        <span class="qr-info-label">Room</span>
+                                        <strong id="qrRoomNameText">—</strong>
+                                    </div>
+                                </div>
+
+                                <button class="secondary-btn qr-btn qr-main-btn" id="viewQrBtn" disabled>
+                                    QR Not Ready
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </section>
+    </main>
+
+    <script src="reservation-details-new.js?v=dashboard-link-final"></script>
+</body>
+</html>

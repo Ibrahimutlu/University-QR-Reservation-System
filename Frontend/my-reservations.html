@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Reservations</title>
+    <link rel="stylesheet" href="my-reservations.css?v=header-clean-final" />
+</head>
+<body>
+    <div class="page-bg"></div>
+
+    <header class="site-header">
+        <div class="container header-container">
+            <div class="brand">
+                <div class="brand-badge">QR</div>
+                <div class="brand-text">
+                    <h1>QR-Integrated University Room Reservation System</h1>
+                    <p>My Reservations</p>
+                </div>
+            </div>
+
+            <nav class="navbar">
+                <a class="nav-link" href="rooms.html">Rooms</a>
+                <a class="nav-link" href="room-details.html">Room Details</a>
+                <a class="nav-link" href="reserve.html">Reserve</a>
+                <a class="nav-link active" href="my-reservations.html">My Reservations</a>
+                <a id="adminNavLink" class="nav-link hidden" href="admin-dashboard.html">Dashboard</a>
+                <button id="logoutBtn" class="secondary-btn" type="button">Logout</button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <section class="page-intro">
+            <div class="container">
+                <div class="intro-card reveal">
+                    <div>
+                        <p class="section-label">Reservations</p>
+                        <h2>View Your Reservations</h2>
+                        <p class="intro-text">
+                            Your active reservations are loaded automatically from your logged-in account.
+                        </p>
+                    </div>
+
+                    <div class="intro-actions">
+                        <a href="reserve.html" class="secondary-btn">Create Reservation</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="results-section">
+            <div class="container">
+                <div class="results-header reveal delay-2">
+                    <div>
+                        <p class="section-label">Results</p>
+                        <h3>Reservation List</h3>
+                    </div>
+
+                    <div class="results-meta">
+                        <span id="reservationCount">0 active reservations</span>
+                    </div>
+                </div>
+
+                <div id="messageBox" class="message-box hidden">
+                    <div class="message-icon" id="messageIcon">!</div>
+                    <div class="message-content">
+                        <h4 id="messageTitle">Message</h4>
+                        <p id="messageText"></p>
+                    </div>
+                </div>
+
+                <div class="results-actions">
+                    <button type="button" class="secondary-btn" id="refreshBtn">Refresh</button>
+                    <button type="button" class="secondary-btn" id="clearBtn">Clear</button>
+                </div>
+
+                <div id="emptyState" class="empty-state reveal delay-3">
+                    <h4>No active reservations found</h4>
+                    <p>Your active reservations will appear here automatically.</p>
+                </div>
+
+                <div id="reservationsContainer" class="reservations-grid"></div>
+            </div>
+        </section>
+    </main>
+
+    <script src="my-reservations-new.js?v=dashboard-link-final"></script>
+</body>
+</html>
