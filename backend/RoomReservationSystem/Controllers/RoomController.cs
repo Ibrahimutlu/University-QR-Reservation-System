@@ -27,63 +27,66 @@ namespace RoomReservationSystem.Controllers
             if (room == null)
                 return NotFound("Room does not exist in the system");
 
-            var bookedSlots = _context.Reservations
-                .Where(r => r.RoomID == roomId &&
-                       r.ReservationDate.Date == date.Date &&
-                       r.Status == "Confirmed")
-                .Select(r => new
-                {
-                    StartTime = r.StartTime,
-                    EndTime = r.EndTime,
-                })
-                .OrderBy(r => r.StartTime)
-                .ToList();
+            if (date == default)
+                date = DateTime.Today;
 
             var workingStart = date.Date.AddHours(8);
             var workingEnd = date.Date.AddHours(20);
+            var slotDuration = TimeSpan.FromHours(1);
+
+            var reservations = _context.Reservations
+                .Where(r => r.RoomID == roomId &&
+                       r.Status == "Confirmed" &&
+                       r.StartTime < workingEnd &&
+                       r.EndTime > workingStart)
+                .Select(r => new
+                {
+                    r.ReservationID,
+                    r.StartTime,
+                    r.EndTime
+                })
+                .ToList();
 
             var availableSlots = new System.Collections.Generic.List<object>();
-            var currentTime = workingStart;
+            var bookedSlots = new System.Collections.Generic.List<object>();
 
-            foreach (var booked in bookedSlots)
+            for (var slotStart = workingStart; slotStart < workingEnd; slotStart = slotStart.Add(slotDuration))
             {
-                if (currentTime < booked.StartTime)
-                {
-                    availableSlots.Add(new
-                    {
-                        StartTime = currentTime.ToString("HH:mm"),
-                        EndTime = booked.StartTime.ToString("HH:mm"),
-                        Status = "Available"
-                    });
-                }
-                currentTime = booked.EndTime;
-            }
+                var slotEnd = slotStart.Add(slotDuration);
 
-            if (currentTime < workingEnd)
-            {
-                availableSlots.Add(new
+                int currentBookings = reservations.Count(r =>
+                    r.StartTime < slotEnd &&
+                    r.EndTime > slotStart);
+
+                int remainingCapacity = room.Capacity - currentBookings;
+
+                var slot = new
                 {
-                    StartTime = currentTime.ToString("HH:mm"),
-                    EndTime = workingEnd.ToString("HH:mm"),
-                    Status = "Available"
-                });
+                    StartTime = slotStart.ToString("HH:mm"),
+                    EndTime = slotEnd.ToString("HH:mm"),
+                    totalCapacity = room.Capacity,
+                    currentBookings = currentBookings,
+                    remainingCapacity = remainingCapacity < 0 ? 0 : remainingCapacity,
+                    isAvailable = remainingCapacity > 0,
+                    Status = remainingCapacity > 0 ? "Available" : "Full"
+                };
+
+                if (remainingCapacity > 0)
+                    availableSlots.Add(slot);
+                else
+                    bookedSlots.Add(slot);
             }
 
             return Ok(new
             {
                 RoomID = room.RoomID,
                 RoomName = room.RoomName,
+                totalCapacity = room.Capacity,
                 Date = date.ToString("yyyy-MM-dd"),
                 AvailableSlots = availableSlots,
-                BookedSlots = bookedSlots.Select(b => new
-                {
-                    StartTime = b.StartTime.ToString("HH:mm"),
-                    EndTime = b.EndTime.ToString("HH:mm"),
-                    Status = "Booked"
-                })
+                BookedSlots = bookedSlots
             });
         }
-
         [HttpGet("status/{roomId}")]
         [Authorize(Roles = "Student,Staff,Admin")]
         public IActionResult GetRoomStatus(int roomId)
@@ -93,41 +96,41 @@ namespace RoomReservationSystem.Controllers
             if (room == null)
                 return NotFound("Room does not exist in the system");
 
+            var now = DateTime.Now;
+
+            // Count active bookings at current time
+            int currentBookings = _context.Reservations.Count(r =>
+                r.RoomID == roomId &&
+                r.Status != "Cancelled" &&
+                r.StartTime <= now &&
+                r.EndTime >= now);
+
+            int remainingCapacity = room.Capacity - currentBookings;
+            bool isAvailable = remainingCapacity > 0;
+
             var currentReservation = _context.Reservations.FirstOrDefault(r =>
                 r.RoomID == roomId &&
                 r.Status == "Confirmed" &&
-                r.StartTime <= DateTime.Now &&
-                r.EndTime >= DateTime.Now);
+                r.StartTime <= now &&
+                r.EndTime >= now);
 
-            if (currentReservation == null)
+            return Ok(new
             {
-                return Ok(new
+                roomID = room.RoomID,
+                roomName = room.RoomName,
+                roomType = room.RoomType,
+                totalCapacity = room.Capacity,
+                currentBookings = currentBookings,
+                remainingCapacity = remainingCapacity,
+                isAvailable = isAvailable,
+                currentReservation = currentReservation == null ? null : new
                 {
-                    RoomID = room.RoomID,
-                    RoomName = room.RoomName,
-                    RoomType = room.RoomType,
-                    IsAvailable = true,
-                    CurrentReservation = (object)null
-                });
-            }
-            else
-            {
-                return Ok(new
-                {
-                    RoomID = room.RoomID,
-                    RoomName = room.RoomName,
-                    RoomType = room.RoomType,
-                    IsAvailable = false,
-                    CurrentReservation = new
-                    {
-                        ReservationID = currentReservation.ReservationID,
-                        StartTime = currentReservation.StartTime,
-                        EndTime = currentReservation.EndTime
-                    }
-                });
-            }
+                    reservationID = currentReservation.ReservationID,
+                    startTime = currentReservation.StartTime,
+                    endTime = currentReservation.EndTime
+                }
+            });
         }
-
         [HttpGet]
         [Authorize(Roles = "Student,Staff,Admin")]
         public IActionResult GetAllRooms()
@@ -143,10 +146,12 @@ namespace RoomReservationSystem.Controllers
         [HttpGet("search")]
         [Authorize(Roles = "Student,Staff,Admin")]
         public IActionResult SearchRooms(
-            [FromQuery] string? type,
-            [FromQuery] int? minCapacity,
-            [FromQuery] string? location,
-            [FromQuery] bool? isAvailable)
+    [FromQuery] string? type,
+    [FromQuery] int? minCapacity,
+    [FromQuery] string? location,
+    [FromQuery] bool? isAvailable,
+    [FromQuery] DateTime? startTime,
+    [FromQuery] DateTime? endTime)
         {
             var query = _context.Rooms.AsQueryable();
 
@@ -159,17 +164,52 @@ namespace RoomReservationSystem.Controllers
             if (!string.IsNullOrEmpty(location))
                 query = query.Where(r => r.Location.ToLower().Contains(location.ToLower()));
 
-            if (isAvailable.HasValue)
-                query = query.Where(r => r.IsAvailable == isAvailable.Value);
-
             var rooms = query.OrderBy(r => r.RoomName).ToList();
 
             if (rooms.Count == 0)
                 return NotFound("No rooms found matching the search criteria");
 
-            return Ok(rooms);
-        }
+            // Calculate remaining capacity for each room
+            var result = rooms.Select(room =>
+            {
+                int currentBookings = 0;
 
+                if (startTime.HasValue && endTime.HasValue)
+                {
+                    currentBookings = _context.Reservations.Count(r =>
+                        r.RoomID == room.RoomID &&
+                        r.Status != "Cancelled" &&
+                        r.StartTime < endTime.Value &&
+                        r.EndTime > startTime.Value);
+                }
+
+                int remainingCapacity = room.Capacity - currentBookings;
+                bool roomIsAvailable = remainingCapacity > 0;
+
+                // Filter by availability if requested
+                if (isAvailable.HasValue && isAvailable.Value != roomIsAvailable)
+                    return null;
+
+                return new
+                {
+                    room.RoomID,
+                    room.RoomName,
+                    room.RoomType,
+                    room.Location,
+                    totalCapacity = room.Capacity,
+                    currentBookings = currentBookings,
+                    remainingCapacity = remainingCapacity,
+                    isAvailable = roomIsAvailable
+                };
+            })
+            .Where(r => r != null)
+            .ToList();
+
+            if (result.Count == 0)
+                return NotFound("No rooms found matching the search criteria");
+
+            return Ok(result);
+        }
         [HttpPost("add")]
         [Authorize(Roles = "Admin")]
         public IActionResult AddRoom([FromBody] Room room)
