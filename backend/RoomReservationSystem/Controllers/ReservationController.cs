@@ -14,11 +14,11 @@ namespace RoomReservationSystem.Controllers
     public class ReservationController : ControllerBase
     {
         private readonly AppDbContext _context;
-        private readonly QRService   _qrService;
+        private readonly QRService _qrService;
 
         public ReservationController(AppDbContext context, QRService qrService)
         {
-            _context   = context;
+            _context = context;
             _qrService = qrService;
         }
 
@@ -32,14 +32,20 @@ namespace RoomReservationSystem.Controllers
             if (reservation.EndTime <= reservation.StartTime)
                 return BadRequest("End time must be after start time");
 
-            if (reservation.ReservationDate < DateTime.Today)
+            var now = DateTime.Now;
+
+            // Use StartTime as the source of truth. Swagger/frontend may send
+            // ReservationDate with a different time component, so we normalize it.
+            reservation.ReservationDate = reservation.StartTime.Date;
+
+            if (reservation.StartTime.Date < now.Date)
                 return BadRequest("Cannot book a room for a past date");
 
-            if (reservation.StartTime < DateTime.Now)
+            if (reservation.StartTime.Date == now.Date && reservation.StartTime <= now)
                 return BadRequest("Cannot book a room for a past time");
 
             var loggedInUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-            var userRole       = User.FindFirst(ClaimTypes.Role).Value;
+            var userRole = User.FindFirst(ClaimTypes.Role).Value;
 
             if (userRole != "Admin" && reservation.UserID != loggedInUserId)
                 return BadRequest("You can only create a reservation for yourself");
@@ -58,10 +64,10 @@ namespace RoomReservationSystem.Controllers
     r.RoomID == reservation.RoomID &&
     r.Status != "Cancelled" &&
     r.StartTime < reservation.EndTime &&
-    r.EndTime   > reservation.StartTime);
+    r.EndTime > reservation.StartTime);
 
-if (overlaps >= room.Capacity)
-    return BadRequest("Room is fully booked for the selected time slot");
+            if (overlaps >= room.Capacity)
+                return BadRequest("Room is fully booked for the selected time slot");
 
             bool userConflict = _context.Reservations.Any(r =>
                 r.UserID == reservation.UserID &&
@@ -73,7 +79,7 @@ if (overlaps >= room.Capacity)
                 return BadRequest("You already have a reservation at this time");
             // Persist the reservation so we have an ID, then generate the QR
             // (the QR payload references the reservation ID).
-            reservation.Status    = "Confirmed";
+            reservation.Status = "Confirmed";
             reservation.CreatedAt = DateTime.Now;
 
             _context.Reservations.Add(reservation);
@@ -91,11 +97,11 @@ if (overlaps >= room.Capacity)
 
             return Ok(new
             {
-                message       = "Reservation created successfully",
+                message = "Reservation created successfully",
                 reservationID = reservation.ReservationID,
-                status        = reservation.Status,
-                qrPayload     = qr.Payload,
-                qrImage       = qr.ImageDataUrl
+                status = reservation.Status,
+                qrPayload = qr.Payload,
+                qrImage = qr.ImageDataUrl
             });
         }
 
@@ -104,7 +110,7 @@ if (overlaps >= room.Capacity)
         public IActionResult GetReservation(int reservationId)
         {
             var loggedInUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-            var userRole       = User.FindFirst(ClaimTypes.Role).Value;
+            var userRole = User.FindFirst(ClaimTypes.Role).Value;
 
             var reservation = _context.Reservations
                 .Where(r => r.ReservationID == reservationId)
@@ -173,7 +179,7 @@ if (overlaps >= room.Capacity)
         public IActionResult GetUserReservations(int userId)
         {
             var loggedInUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-            var userRole       = User.FindFirst(ClaimTypes.Role).Value;
+            var userRole = User.FindFirst(ClaimTypes.Role).Value;
 
             if (userRole == "Student" && userId != loggedInUserId)
                 return BadRequest("You can only view your own reservations");
@@ -226,7 +232,7 @@ if (overlaps >= room.Capacity)
                 r.Status,
                 r.CreatedAt,
                 qrPayload = r.QRCodeData,
-                qrImage   = string.IsNullOrEmpty(r.QRCodeData)
+                qrImage = string.IsNullOrEmpty(r.QRCodeData)
                                 ? null
                                 : _qrService.GenerateFromString(r.QRCodeData),
                 r.Room,
@@ -246,7 +252,7 @@ if (overlaps >= room.Capacity)
                 return NotFound("Reservation does not exist");
 
             var loggedInUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-            var userRole       = User.FindFirst(ClaimTypes.Role).Value;
+            var userRole = User.FindFirst(ClaimTypes.Role).Value;
 
             if (userRole != "Admin" && reservation.UserID != loggedInUserId)
                 return BadRequest("You can only cancel your own reservation");
@@ -255,7 +261,7 @@ if (overlaps >= room.Capacity)
                 return BadRequest("Reservation is already cancelled");
 
             // Invalidate the reservation and the associated QR payload.
-            reservation.Status     = "Cancelled";
+            reservation.Status = "Cancelled";
             reservation.QRCodeData = null;
 
             _context.SaveChanges();
@@ -285,13 +291,18 @@ if (overlaps >= room.Capacity)
             if (request.EndTime <= request.StartTime)
                 return BadRequest("End time must be after start time");
 
-            if (request.ReservationDate < DateTime.Today)
+            var now = DateTime.Now;
+            var requestedReservationDate = request.StartTime.Date;
+
+            if (request.StartTime.Date < now.Date)
                 return BadRequest("Cannot reschedule to a past date");
 
-            if (request.StartTime < DateTime.Now)
+            if (request.StartTime.Date == now.Date && request.StartTime <= now)
                 return BadRequest("Cannot reschedule to a past time");
 
             var room = _context.Rooms.FirstOrDefault(r => r.RoomID == reservation.RoomID);
+            if (room == null)
+                return NotFound("Room does not exist in the system");
 
             // Check capacity at new time slot (excluding current reservation)
             int overlaps = _context.Reservations.Count(r =>
@@ -316,7 +327,7 @@ if (overlaps >= room.Capacity)
                 return BadRequest("You already have another reservation at this time");
 
             // Apply updates
-            reservation.ReservationDate = request.ReservationDate;
+            reservation.ReservationDate = requestedReservationDate;
             reservation.StartTime = request.StartTime;
             reservation.EndTime = request.EndTime;
 
