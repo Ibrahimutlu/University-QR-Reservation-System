@@ -46,15 +46,19 @@ let allSlots = [];
 let selectedSlot = null;
 
 function getStoredUserId() {
-    return localStorage.getItem("userID");
+    return localStorage.getItem("userID") || localStorage.getItem("rrs.userId");
 }
 
 function getToken() {
-    return localStorage.getItem("token");
+    return localStorage.getItem("token") || localStorage.getItem("rrs.token");
 }
 
 function getRole() {
-    return (localStorage.getItem("role") || "").trim().toLowerCase();
+    return (
+        localStorage.getItem("role") ||
+        localStorage.getItem("rrs.role") ||
+        ""
+    ).trim().toLowerCase();
 }
 
 if (!getToken()) {

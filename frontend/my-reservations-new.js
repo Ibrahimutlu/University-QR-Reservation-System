@@ -19,15 +19,15 @@ const adminNavLink = document.getElementById("adminNavLink");
 const ACTIVE_STATUSES = new Set(["pending", "confirmed", "active", "checkedin"]);
 
 function getStoredUserId() {
-    return localStorage.getItem("userID");
+    return localStorage.getItem("userID") || localStorage.getItem("rrs.userId");
 }
 
 function getToken() {
-    return localStorage.getItem("token");
+    return localStorage.getItem("token") || localStorage.getItem("rrs.token");
 }
 
 function getRole() {
-    return localStorage.getItem("role");
+    return localStorage.getItem("role") || localStorage.getItem("rrs.role");
 }
 
 if (!getToken()) {
@@ -444,7 +444,11 @@ if (logoutBtn) {
 
 function setupDashboardLink() {
     const dashboardLink = document.getElementById("adminNavLink");
-    const role = (localStorage.getItem("role") || "").trim().toLowerCase();
+    const role = (
+        localStorage.getItem("role") ||
+        localStorage.getItem("rrs.role") ||
+        ""
+    ).trim().toLowerCase();
 
     if (!dashboardLink) return;
 

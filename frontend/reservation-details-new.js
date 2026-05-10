@@ -44,15 +44,15 @@ const qrReservationIdText = document.getElementById("qrReservationIdText");
 const qrRoomNameText = document.getElementById("qrRoomNameText");
 
 function getToken() {
-  return localStorage.getItem("token");
+  return localStorage.getItem("token") || localStorage.getItem("rrs.token");
 }
 
 function getStoredUserId() {
-  return localStorage.getItem("userID");
+  return localStorage.getItem("userID") || localStorage.getItem("rrs.userId");
 }
 
 function getRole() {
-  return localStorage.getItem("role");
+  return localStorage.getItem("role") || localStorage.getItem("rrs.role");
 }
 
 function getReservationIdFromUrl() {
@@ -207,7 +207,7 @@ async function generateExternalRoomQr(roomId, roomName) {
   const base  = (typeof window !== "undefined" && window.RRS_API_BASE
       ? window.RRS_API_BASE
       : "http://localhost:5000");
-  const token = localStorage.getItem("token");
+  const token = getToken();
   const response = await fetch(base + "/api/qr/room/" + roomId, {
     headers: token ? { Authorization: "Bearer " + token } : {}
   });
@@ -512,7 +512,11 @@ if (logoutBtn) {
 
 function setupDashboardLink() {
     const dashboardLink = document.getElementById("adminNavLink");
-    const role = (localStorage.getItem("role") || "").trim().toLowerCase();
+    const role = (
+        localStorage.getItem("role") ||
+        localStorage.getItem("rrs.role") ||
+        ""
+    ).trim().toLowerCase();
 
     if (!dashboardLink) return;
 

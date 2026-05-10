@@ -43,11 +43,15 @@ const qrExpiry = document.getElementById("qrExpiry");
 const viewQrBtn = document.getElementById("viewQrBtn");
 
 function getToken() {
-    return localStorage.getItem("token");
+    return localStorage.getItem("token") || localStorage.getItem("rrs.token");
 }
 
 function getRole() {
-    return (localStorage.getItem("role") || "").trim().toLowerCase();
+    return (
+        localStorage.getItem("role") ||
+        localStorage.getItem("rrs.role") ||
+        ""
+    ).trim().toLowerCase();
 }
 
 if (!getToken()) {
@@ -249,7 +253,7 @@ async function generateRoomQr(roomId, roomName) {
     const base  = (typeof window !== "undefined" && window.RRS_API_BASE
         ? window.RRS_API_BASE
         : "http://localhost:5000");
-    const token = localStorage.getItem("token");
+    const token = getToken();
     const response = await fetch(base + "/api/qr/room/" + roomId, {
         headers: token ? { Authorization: "Bearer " + token } : {}
     });
@@ -269,7 +273,7 @@ async function createRoomQr(roomId) {
     const base = (typeof window !== "undefined" && window.RRS_API_BASE
         ? window.RRS_API_BASE
         : "http://localhost:5000");
-    const token = localStorage.getItem("token");
+    const token = getToken();
     const response = await fetch(base + "/api/qr/create/" + roomId, {
         method: "POST",
         headers: token ? { Authorization: "Bearer " + token } : {}

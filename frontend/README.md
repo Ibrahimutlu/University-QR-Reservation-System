@@ -51,10 +51,11 @@ After login, students/staff land on `rooms.html`; admins land on `admin-dashboar
 
 1. `login.html` posts credentials to `POST /api/auth/login`.
 2. The returned JWT, role, and `userID` are stored in `localStorage`
-   under the keys `token`, `role`, `userID` respectively.
+   under both legacy keys (`token`, `role`, `userID`) and modern keys
+   (`rrs.token`, `rrs.role`, `rrs.userId`) for backward compatibility.
 3. Every fetch in the page-specific scripts attaches
    `Authorization: Bearer <token>`.
-4. Pages that require auth check `localStorage.getItem("token")` and
+4. Pages that require auth check token presence (legacy + modern keys) and
    redirect back to `login.html` when missing or expired.
 
 ---
@@ -64,13 +65,27 @@ After login, students/staff land on `rooms.html`; admins land on `admin-dashboar
 Every entry HTML injects this **before** loading any page-specific script:
 
 ```html
-<script>window.RRS_API_BASE = "https://university-qr-reservation-system-production.up.railway.app";</script>
+<script>
+  window.RRS_API_BASE =
+    (["localhost", "127.0.0.1"].includes(window.location.hostname)
+      ? "http://localhost:5000"
+      : window.location.origin);
+</script>
 ```
 
 The page-specific scripts (`login.js`, `rooms-api.js`, `reserve-new.js`,
 `my-reservations-new.js`, `reservation-details-new.js`, `room-details-new.js`,
-`admin-dashboard.js`) read `window.RRS_API_BASE` and fall back to
-`http://localhost:5000` when the variable is absent (local dev).
+`admin-dashboard.js`) read `window.RRS_API_BASE`.
+
+On Vercel, requests go to same-origin `/api/*` first, then are proxied to
+Railway via `frontend/vercel.json`:
+
+```json
+{
+  "source": "/api/:path*",
+  "destination": "https://university-qr-reservation-system-production.up.railway.app/api/:path*"
+}
+```
 
 The shared `js/` modules (`config.js`, `api.js`, `auth.js`, `nav.js`,
 `scan.js`, `print-qr.js`) used by `scan.html` and `print-qr.html` follow
@@ -113,10 +128,12 @@ can scan but never see a QR image inside the UI.
 
 The runtime API base lives in two places:
 
-* **Production (Vercel / GitHub Pages / Railway-served):** the inline
-  `<script>window.RRS_API_BASE="..."</script>` injected at the top of every
-  entry HTML.
-* **Local dev:** the fallback inside `js/config.js`:
+* **Production (Vercel):** inline `window.RRS_API_BASE = window.location.origin`
+  so API calls are same-origin (`/api/*`) and routed by Vercel rewrite proxy.
+* **Local dev:** inline `window.RRS_API_BASE = "http://localhost:5000"` when
+  host is `localhost`/`127.0.0.1`.
+* **Shared module fallback:** `js/config.js` still contains Railway fallback for
+  pages that use `window.APP_CONFIG` helpers:
 
 ```js
 // frontend/js/config.js

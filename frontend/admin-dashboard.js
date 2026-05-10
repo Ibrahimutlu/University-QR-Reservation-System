@@ -60,15 +60,15 @@ let allRooms = [];
 let allReservations = [];
 
 function getToken() {
-    return localStorage.getItem("token");
+    return localStorage.getItem("token") || localStorage.getItem("rrs.token");
 }
 
 function getRole() {
-    return localStorage.getItem("role");
+    return localStorage.getItem("role") || localStorage.getItem("rrs.role");
 }
 
 function getStoredUserId() {
-    return localStorage.getItem("userID");
+    return localStorage.getItem("userID") || localStorage.getItem("rrs.userId");
 }
 
 function isAdmin() {

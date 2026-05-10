@@ -194,7 +194,7 @@
         </section>
     </main>
 
-    <script>window.RRS_API_BASE = "https://university-qr-reservation-system-production.up.railway.app";</script>
+    <script>window.RRS_API_BASE = (["localhost","127.0.0.1"].includes(window.location.hostname) ? "http://localhost:5000" : window.location.origin);</script>
     <script src="room-details-new.js?v=qr-clean-final"></script>
 </body>
 </html>

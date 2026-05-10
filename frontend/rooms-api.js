@@ -18,11 +18,15 @@ const adminNavLink = document.getElementById("adminNavLink");
 let rooms = [];
 
 function getToken() {
-    return localStorage.getItem("token");
+    return localStorage.getItem("token") || localStorage.getItem("rrs.token");
 }
 
 function getRole() {
-    return (localStorage.getItem("role") || "").trim().toLowerCase();
+    return (
+        localStorage.getItem("role") ||
+        localStorage.getItem("rrs.role") ||
+        ""
+    ).trim().toLowerCase();
 }
 
 function setupDashboardLink() {
