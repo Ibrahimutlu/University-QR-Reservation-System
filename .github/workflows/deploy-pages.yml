@@ -1,0 +1,50 @@
+# ─────────────────────────────────────────────────────────────────────
+# GitHub Pages deploy for the static frontend.
+#
+# To activate:
+#   1. Push this file to main.
+#   2. Repo → Settings → Pages → Source: "GitHub Actions".
+#   3. Workflow run will publish https://<user>.github.io/<repo>/
+#      with the contents of frontend/ as the site root.
+#
+# After the first deploy, set FRONTEND_URL on Railway to the github.io
+# URL so CORS allows the origin.
+# ─────────────────────────────────────────────────────────────────────
+name: Deploy frontend to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/deploy-pages.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend
+
+  deploy:
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

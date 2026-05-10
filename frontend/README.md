@@ -1,8 +1,8 @@
 # Frontend — RoomLink
 
 Modern responsive UI for the Room Reservation System.
-**No build step required** — static HTML, Tailwind CSS via CDN,
-Inter via Google Fonts, vanilla JavaScript.
+**No build step required** — static HTML, vanilla JavaScript, CSS via the
+team's per-page stylesheets.
 
 ---
 
@@ -30,72 +30,116 @@ Open <http://localhost:8000>.
 
 ## Pages
 
-| File                | Purpose                                            |
-|---------------------|----------------------------------------------------|
-| `index.html`        | Login (entry point) with demo-account hint card    |
-| `dashboard.html`    | Browse rooms grid · book modal · open door QR      |
-| `reservations.html` | List user's bookings · view per-reservation QR · cancel |
-| `scan.html`         | Camera-based QR scanner (door OR reservation QR)   |
-| `admin.html`        | Admin-only room CRUD + door-QR access              |
-| `print-qr.html`     | Printable / displayable door-QR sheet              |
+| File                          | Purpose                                              | Auth                |
+|-------------------------------|------------------------------------------------------|---------------------|
+| `index.html`                  | Auto-redirect to `login.html`                        | public              |
+| `login.html`                  | Login page (email + password)                        | public              |
+| `rooms.html`                  | Browse rooms grid                                    | Student/Staff/Admin |
+| `room-details.html`           | Room detail view                                     | Student/Staff/Admin |
+| `reserve.html`                | Booking form (2-hour slots)                          | Student/Staff/Admin |
+| `my-reservations.html`        | List user's bookings                                 | Student/Staff/Admin |
+| `reservation-details.html`    | Reservation detail / cancel / re-schedule            | Student/Staff/Admin |
+| `admin-dashboard.html`        | Admin: room CRUD + reservation oversight             | Admin only          |
+| `scan.html`                   | Camera-based QR scanner (entry / exit)               | Student/Staff/Admin |
+| `print-qr.html`               | Printable / displayable door QR                      | Staff/Admin only    |
+
+After login, students/staff land on `rooms.html`; admins land on `admin-dashboard.html`.
 
 ---
 
 ## How auth works
 
-1. `index.html` posts credentials to `POST /api/auth/login`.
-2. The returned JWT, role, and userID are stored in `localStorage`.
-3. `js/api.js` automatically attaches `Authorization: Bearer <token>` to every call.
-4. `js/auth.js` exposes `Auth.requireAuth()` and `Auth.requireRole("Admin")`,
-   which redirect unauthenticated/unauthorised visitors away.
+1. `login.html` posts credentials to `POST /api/auth/login`.
+2. The returned JWT, role, and `userID` are stored in `localStorage`
+   under the keys `token`, `role`, `userID` respectively.
+3. Every fetch in the page-specific scripts attaches
+   `Authorization: Bearer <token>`.
+4. Pages that require auth check `localStorage.getItem("token")` and
+   redirect back to `login.html` when missing or expired.
+
+---
+
+## How the API base URL is resolved
+
+Every entry HTML injects this **before** loading any page-specific script:
+
+```html
+<script>window.RRS_API_BASE = "https://university-qr-reservation-system-production.up.railway.app";</script>
+```
+
+The page-specific scripts (`login.js`, `rooms-api.js`, `reserve-new.js`,
+`my-reservations-new.js`, `reservation-details-new.js`, `room-details-new.js`,
+`admin-dashboard.js`) read `window.RRS_API_BASE` and fall back to
+`http://localhost:5000` when the variable is absent (local dev).
+
+The shared `js/` modules (`config.js`, `api.js`, `auth.js`, `nav.js`,
+`scan.js`, `print-qr.js`) used by `scan.html` and `print-qr.html` follow
+the same convention.
 
 ---
 
 ## How QR scanning works
 
-The frontend supports **two scanning modes** through the same UI:
+The frontend supports **two scanning modes** through `scan.html`:
 
-| Source                                | Endpoint hit                         |
-|---------------------------------------|--------------------------------------|
-| Door sticker (`ROOM-1-LAB101` style)  | `GET  /api/qr/validate`              |
-| Student's screen (JSON payload)       | `POST /api/qr/validate-reservation`  |
+| Source                                | Endpoint hit                          |
+|---------------------------------------|---------------------------------------|
+| Door sticker (e.g. `ROOM-1-A`)        | `GET  /api/qr/validate`               |
+| Student's reservation token (JSON)    | `POST /api/qr/validate-reservation`   |
 
 `scan.html` decides between them by looking at the scanned text — JSON-shaped
 strings are routed as reservation tokens; everything else is treated as a
 room sticker.
 
-### How to display a QR for scanning
+### Spec rule — only Staff/Admin can VIEW a QR
 
-There are three QR-display flows in the system:
+The backend enforces this with `[Authorize(Roles="Staff,Admin")]` on the
+`GET /api/qr/room/{id}` and `GET /api/qr/dynamic/{id}` endpoints. Students
+can scan but never see a QR image inside the UI.
 
-1. **Reservation QR (the student's "ticket")** — generated automatically
-   when the booking is created. View it under **My Bookings -> View QR**.
-   The modal shows the QR PNG ready to be scanned.
+### Three QR-display flows
 
-2. **Door sticker QR (admin / signage)** — open `print-qr.html?room=1` (or
-   click the **QR** button on any room card / admin row). The page renders
-   a clean, printable A4-friendly card with the room name and QR. Click
-   **Print** to send it to your printer; or maximise the window and use it
-   as a standalone screen for scanning.
-
-3. **Manual fallback** — if the camera is blocked (some browsers refuse
-   over plain HTTP), open **Scan QR**, type the sticker code (e.g.
-   `ROOM-1-LAB101`) into the manual input box, and press **Validate**.
+1. **Door sticker QR (Staff / Admin only)** — open `print-qr.html?room=1`,
+   prints a clean A4-friendly card with the room name and QR. Click **Print**
+   or maximise the window for live demos.
+2. **Door scanning (any role)** — `scan.html` reads the QR from the camera,
+   posts to `/api/qr/check-in` or `/api/qr/check-out`.
+3. **Manual fallback** — if the camera is blocked over plain HTTP, type the
+   sticker code (`ROOM-1-A`) directly into the manual input box on `scan.html`.
 
 ---
 
 ## Configuration
 
-Edit one constant in `js/config.js` if your backend URL differs:
+The runtime API base lives in two places:
+
+* **Production (Vercel / GitHub Pages / Railway-served):** the inline
+  `<script>window.RRS_API_BASE="..."</script>` injected at the top of every
+  entry HTML.
+* **Local dev:** the fallback inside `js/config.js`:
 
 ```js
-window.APP_CONFIG = { API_BASE: "http://localhost:5000", ... };
+// frontend/js/config.js
+window.APP_CONFIG = {
+  API_BASE: "http://localhost:5000",  // fallback
+  ...
+};
 ```
+
+Override at any time by setting `localStorage.setItem("rrs_api_base", "...")`
+in the browser console — useful when probing the staging URL from a deployed
+build.
 
 ---
 
 ## Libraries used (CDN — no install)
 
-- [Tailwind CSS](https://tailwindcss.com/) — utility styling
-- [Inter](https://fonts.google.com/specimen/Inter) — typeface
+- [Tailwind CSS](https://tailwindcss.com/) — utility styling for `scan.html`,
+  `print-qr.html`, and the redirect `index.html`
+- [Inter](https://fonts.google.com/specimen/Inter) — typeface for the same set
 - [html5-qrcode](https://github.com/mebjas/html5-qrcode) — camera-based QR scanning
+
+The team's pages (`login.html`, `rooms.html`, `reserve.html`,
+`my-reservations.html`, `reservation-details.html`, `room-details.html`,
+`admin-dashboard.html`) use their own per-page CSS files (`login.css`,
+`reserve.css`, etc.) plus the shared `style.css`.
