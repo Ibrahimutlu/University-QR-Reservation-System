@@ -150,9 +150,62 @@ namespace RoomReservationSystem
                 app.UseDeveloperExceptionPage();
             }
 
-            // Expose Swagger in every environment so Railway demos can use it.
-            app.UseSwagger();
-            app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Room Reservation API v1"));
+            // ─── Security headers (applied before anything else) ─────────
+            app.Use(async (ctx, next) =>
+            {
+                var h = ctx.Response.Headers;
+                h["X-Content-Type-Options"] = "nosniff";
+                h["X-Frame-Options"]        = "DENY";
+                h["Referrer-Policy"]        = "strict-origin-when-cross-origin";
+                h["Permissions-Policy"]     = "camera=(self), microphone=(), geolocation=()";
+                // Allow inline scripts (we use them for window.RRS_API_BASE)
+                // but lock everything else down.
+                h["Content-Security-Policy"] =
+                    "default-src 'self'; " +
+                    "img-src 'self' data: blob: https:; " +
+                    "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com; " +
+                    "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://fonts.googleapis.com; " +
+                    "font-src 'self' https://fonts.gstatic.com; " +
+                    "connect-src 'self'";
+                await next();
+            });
+
+            // ─── Swagger: NOT public in production ───────────────────────
+            // Default: enabled only when ASPNETCORE_ENVIRONMENT=Development
+            // Opt-in for prod: set ENABLE_SWAGGER=true (and optionally
+            //   SWAGGER_TOKEN to require ?token=... before the UI loads).
+            bool swaggerEnabled = env.IsDevelopment() ||
+                string.Equals(Configuration["ENABLE_SWAGGER"], "true",
+                              StringComparison.OrdinalIgnoreCase);
+            string swaggerToken = Configuration["SWAGGER_TOKEN"];
+
+            if (swaggerEnabled)
+            {
+                if (!string.IsNullOrEmpty(swaggerToken))
+                {
+                    app.UseWhen(
+                        ctx => ctx.Request.Path.StartsWithSegments("/swagger") &&
+                               ctx.Request.Query["token"] != swaggerToken,
+                        branch => branch.Run(async ctx =>
+                        {
+                            ctx.Response.StatusCode = 404;
+                            await ctx.Response.WriteAsync("Not found.");
+                        }));
+                }
+                app.UseSwagger();
+                app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Room Reservation API v1"));
+            }
+            else
+            {
+                // Block /swagger entirely in production by default.
+                app.UseWhen(
+                    ctx => ctx.Request.Path.StartsWithSegments("/swagger"),
+                    branch => branch.Run(async ctx =>
+                    {
+                        ctx.Response.StatusCode = 404;
+                        await ctx.Response.WriteAsync("Not found.");
+                    }));
+            }
 
             // HTTPS redirection only when not on a PaaS (Railway terminates TLS
             // upstream). The FORCE_HTTPS env var can opt back in if needed.
