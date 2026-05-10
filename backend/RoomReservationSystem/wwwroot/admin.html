@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>RoomLink — Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="nav-slot"></div>
+
+  <main class="max-w-6xl mx-auto px-4 py-8">
+    <header class="flex items-end justify-between mb-6">
+      <div>
+        <h1 class="text-2xl md:text-3xl font-bold text-slate-900">Admin · Rooms</h1>
+        <p class="text-slate-500 text-sm">Add, edit, or remove rooms.</p>
+      </div>
+      <button class="btn-primary" onclick="openAdd()">+ Add room</button>
+    </header>
+
+    <div class="card overflow-hidden">
+      <table class="w-full text-left text-sm">
+        <thead class="bg-slate-50 text-slate-500 uppercase text-xs">
+          <tr>
+            <th class="px-4 py-3">ID</th>
+            <th class="px-4 py-3">Name</th>
+            <th class="px-4 py-3">Type</th>
+            <th class="px-4 py-3">Capacity</th>
+            <th class="px-4 py-3">Location</th>
+            <th class="px-4 py-3">Status</th>
+            <th class="px-4 py-3 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <tr><td colspan="7" class="text-center text-slate-400 py-8">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <div id="modal-root"></div>
+
+  <script>window.RRS_API_BASE = "https://university-qr-reservation-system-production.up.railway.app";</script>
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/nav.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>
