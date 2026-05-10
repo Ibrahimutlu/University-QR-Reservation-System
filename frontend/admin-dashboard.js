@@ -47,7 +47,6 @@ const regFirstName = document.getElementById("regFirstName");
 const regLastName = document.getElementById("regLastName");
 const regEmail = document.getElementById("regEmail");
 const regPassword = document.getElementById("regPassword");
-const regRole = document.getElementById("regRole");
 const regStudentNumber = document.getElementById("regStudentNumber");
 const registerUserBtn = document.getElementById("registerUserBtn");
 
@@ -732,29 +731,30 @@ async function loadAllReservations() {
 function clearRegisterUserForm() {
     if (!registerUserForm) return;
     registerUserForm.reset();
-    if (regRole) regRole.value = "Student";
 }
 
 function validateRegisterUserForm() {
     const firstName = (regFirstName?.value || "").trim();
     const lastName = (regLastName?.value || "").trim();
-    const email = (regEmail?.value || "").trim();
     const password = (regPassword?.value || "").trim();
-    const role = (regRole?.value || "").trim();
+    const studentNumber = (regStudentNumber?.value || "").trim();
 
-    if (!firstName || !lastName || !email || !password || !role) {
-        throw new Error("First name, last name, email, password, and role are required.");
+    if (!firstName || !lastName || !password || !studentNumber) {
+        throw new Error("First name, last name, student number, and password are required.");
     }
 }
 
 function buildRegisterPayload() {
+    const studentNumber = (regStudentNumber?.value || "").trim();
+    const email = (regEmail?.value || "").trim();
+
     return {
         firstName: (regFirstName?.value || "").trim(),
         lastName: (regLastName?.value || "").trim(),
-        email: (regEmail?.value || "").trim(),
+        email: email || `${studentNumber}@students.roomlink.local`,
         password: (regPassword?.value || "").trim(),
-        role: (regRole?.value || "").trim(),
-        studentNumber: (regStudentNumber?.value || "").trim() || null
+        role: "Student",
+        studentNumber
     };
 }
 
@@ -776,8 +776,8 @@ async function registerUser() {
 
         showMessage(
             "success",
-            "User Registered",
-            `User created successfully. User ID: ${data.userID || data.UserID || "N/A"}`
+            "Student Registered",
+            `Student created successfully. User ID: ${data.userID || data.UserID || "N/A"}`
         );
         clearRegisterUserForm();
     } catch (error) {

@@ -44,6 +44,7 @@ const adminNavLink = document.getElementById("adminNavLink");
 
 let allSlots = [];
 let selectedSlot = null;
+let roomLockedFromQuery = false;
 
 function getStoredUserId() {
     return localStorage.getItem("userID") || localStorage.getItem("rrs.userId");
@@ -197,8 +198,71 @@ function prefillRoomIdFromUrl() {
 
     if (roomIdFromUrl) {
         fields.roomId.value = roomIdFromUrl;
-        fields.roomId.readOnly = true;
+        fields.roomId.disabled = true;
+        roomLockedFromQuery = true;
+    } else {
+        fields.roomId.disabled = false;
+        roomLockedFromQuery = false;
     }
+}
+
+function extractRoomsArray(data) {
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.rooms)) return data.rooms;
+    if (Array.isArray(data?.Rooms)) return data.Rooms;
+    if (Array.isArray(data?.data)) return data.data;
+    if (Array.isArray(data?.Data)) return data.Data;
+    if (Array.isArray(data?.$values)) return data.$values;
+    return [];
+}
+
+function normalizeRoom(room) {
+    return {
+        id: room.roomID ?? room.RoomID ?? room.id ?? room.ID,
+        name: room.roomName ?? room.RoomName ?? room.name ?? room.Name ?? "Unknown Room",
+        type: room.roomType ?? room.RoomType ?? room.type ?? room.Type ?? "Unknown Type",
+        location: room.location ?? room.Location ?? "Unknown Location"
+    };
+}
+
+function populateRoomOptions(rooms) {
+    const selected = fields.roomId.value;
+    fields.roomId.innerHTML = "";
+
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "Select a room";
+    fields.roomId.appendChild(placeholder);
+
+    rooms.forEach((room) => {
+        const option = document.createElement("option");
+        option.value = String(room.id);
+        option.textContent = `${room.name} (ID: ${room.id})`;
+        fields.roomId.appendChild(option);
+    });
+
+    if (selected) {
+        const exists = rooms.some((r) => String(r.id) === String(selected));
+        if (exists) {
+            fields.roomId.value = String(selected);
+            return;
+        }
+
+        if (roomLockedFromQuery) {
+            fields.roomId.innerHTML = "";
+            const fallback = document.createElement("option");
+            fallback.value = String(selected);
+            fallback.textContent = `Room #${selected}`;
+            fields.roomId.appendChild(fallback);
+            fields.roomId.value = String(selected);
+        }
+    }
+}
+
+async function loadRoomOptions() {
+    const data = await apiRequest(`${ROOM_API_BASE_URL}`);
+    const rooms = extractRoomsArray(data).map(normalizeRoom);
+    populateRoomOptions(rooms);
 }
 
 function resetSelectedSlot() {
@@ -386,7 +450,7 @@ async function loadAvailableSlots() {
     hideMessage();
 
     if (!roomId) {
-        slotsMessage.textContent = "Room ID is missing.";
+        slotsMessage.textContent = "Please select a room first.";
         return;
     }
 
@@ -564,10 +628,14 @@ reservationForm.addEventListener("reset", () => {
     hideMessage();
 
     setTimeout(() => {
+        fields.roomId.disabled = false;
         prefillRoomIdFromUrl();
+        loadRoomOptions().catch(() => {
+            // Non-blocking on reset.
+        });
         allSlots = [];
         slotsContainer.innerHTML = "";
-        slotsMessage.textContent = "Choose a reservation date to load time slots.";
+        slotsMessage.textContent = "Choose a room and reservation date to load available slots.";
         resetSelectedSlot();
         updatePreview();
     }, 0);
@@ -575,6 +643,16 @@ reservationForm.addEventListener("reset", () => {
 
 fields.reservationDate.addEventListener("change", async () => {
     await loadAvailableSlots();
+    updatePreview();
+});
+
+fields.roomId.addEventListener("change", async () => {
+    resetSelectedSlot();
+    if (fields.reservationDate.value) {
+        await loadAvailableSlots();
+    } else {
+        slotsMessage.textContent = "Choose a reservation date to load available slots.";
+    }
     updatePreview();
 });
 
@@ -593,7 +671,17 @@ if (logoutBtn) {
 
 setupDashboardLink();
 prefillRoomIdFromUrl();
-updatePreview();
-slotsMessage.textContent = "Choose a reservation date to load time slots.";
+loadRoomOptions()
+    .then(() => {
+        if (roomLockedFromQuery) {
+            fields.roomId.disabled = true;
+        }
+        updatePreview();
+    })
+    .catch(() => {
+        slotsMessage.textContent = "Rooms could not be loaded. Please refresh the page.";
+        updatePreview();
+    });
+slotsMessage.textContent = "Choose a room and reservation date to load available slots.";
 
 

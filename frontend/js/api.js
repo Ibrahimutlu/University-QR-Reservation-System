@@ -64,6 +64,8 @@
   window.Api = {
     // Auth
     login: (email, password) => request("POST", "/api/auth/login", { body: { email, password } }),
+    studentLogin: (studentNumber, password) =>
+      request("POST", "/api/auth/student-login", { body: { studentNumber, password } }),
     register: (payload) => request("POST", "/api/auth/register", { body: payload }),
 
     // Rooms

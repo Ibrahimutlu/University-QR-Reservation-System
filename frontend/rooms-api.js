@@ -188,8 +188,7 @@ function createRoomCard(room) {
     </div>
 
     <div class="room-actions">
-      <a href="room-details.html?roomId=${encodeURIComponent(room.id)}" class="secondary-btn">Check Status</a>
-      <a href="reserve.html?roomId=${encodeURIComponent(room.id)}" class="primary-btn">Reserve</a>
+      <a href="reserve.html?roomId=${encodeURIComponent(room.id)}" class="primary-btn">Reserve This Room</a>
     </div>
   `;
 

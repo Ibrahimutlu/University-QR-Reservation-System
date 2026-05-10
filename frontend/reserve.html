@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
@@ -21,7 +21,6 @@
 
             <nav class="navbar">
                 <a class="nav-link" href="rooms.html">Rooms</a>
-                <a class="nav-link" href="room-details.html">Room Details</a>
                 <a class="nav-link active" href="reserve.html">Reserve</a>
                 <a class="nav-link" href="my-reservations.html">My Reservations</a>
                 <a id="adminNavLink" class="nav-link hidden" href="admin-dashboard.html">Dashboard</a>
@@ -38,7 +37,7 @@
                         <p class="section-label">Reservation Form</p>
                         <h2>Create a New Reservation</h2>
                         <p class="intro-text">
-                            Select a date first, then choose one of the available time slots for the room.
+                            Choose a room, pick a date, and select one available slot.
                         </p>
                     </div>
 
@@ -62,12 +61,10 @@
                     <form id="reservationForm" novalidate>
                         <div class="form-grid">
                             <div class="form-group">
-                                <label for="roomId">Room ID</label>
-                                <input type="number"
-                                       id="roomId"
-                                       name="roomId"
-                                       placeholder="Room ID"
-                                       min="1" />
+                                <label for="roomId">Room</label>
+                                <select id="roomId" name="roomId">
+                                    <option value="">Select a room</option>
+                                </select>
                                 <small class="field-error" id="roomIdError"></small>
                             </div>
 
@@ -88,7 +85,7 @@
                             </div>
 
                             <div id="slotsMessage" class="slots-message">
-                                Choose a reservation date to load available slots.
+                                Choose a room and reservation date to load available slots.
                             </div>
 
                             <div id="slotsContainer" class="slots-container"></div>
@@ -128,27 +125,27 @@
                     <div class="summary-card">
                         <div class="summary-row">
                             <span>Room ID</span>
-                            <strong id="previewRoomId">—</strong>
+                            <strong id="previewRoomId">-</strong>
                         </div>
 
                         <div class="summary-row">
                             <span>Date</span>
-                            <strong id="previewDate">—</strong>
+                            <strong id="previewDate">-</strong>
                         </div>
 
                         <div class="summary-row">
                             <span>Start Time</span>
-                            <strong id="previewStartTime">—</strong>
+                            <strong id="previewStartTime">-</strong>
                         </div>
 
                         <div class="summary-row">
                             <span>End Time</span>
-                            <strong id="previewEndTime">—</strong>
+                            <strong id="previewEndTime">-</strong>
                         </div>
 
                         <div class="summary-row">
                             <span>Remaining Capacity</span>
-                            <strong id="previewRemainingCapacity">—</strong>
+                            <strong id="previewRemainingCapacity">-</strong>
                         </div>
                     </div>
                 </aside>
@@ -158,7 +155,7 @@
         <section class="message-section">
             <div class="container">
                 <div id="messageBox" class="message-box hidden">
-                    <div class="message-icon" id="messageIcon">✓</div>
+                    <div class="message-icon" id="messageIcon">OK</div>
                     <div class="message-content">
                         <h4 id="messageTitle">Reservation Created</h4>
                         <p id="messageText"></p>

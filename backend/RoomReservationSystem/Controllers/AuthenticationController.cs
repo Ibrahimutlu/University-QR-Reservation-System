@@ -26,20 +26,52 @@ namespace RoomReservationSystem.Controllers
             if (user == null)
                 return BadRequest("Invalid login details");
 
+            if (string.IsNullOrWhiteSpace(user.Email) || string.IsNullOrWhiteSpace(user.Password))
+                return BadRequest("Email and password are required");
+
             var existingUser = _context.Users.FirstOrDefault(u => u.Email == user.Email);
 
             if (existingUser == null || existingUser.Password != user.Password)
                 return Unauthorized("Invalid email or password");
 
-            var token = _jwtService.GenerateToken(existingUser);
+            if (existingUser.Role != "Admin" && existingUser.Role != "Staff")
+                return Unauthorized("Students must use student number login");
 
-            return Ok(new
+            return Ok(BuildLoginResponse(existingUser, "Admin/Staff login successful"));
+        }
+
+        [HttpPost("student-login")]
+        public IActionResult StudentLogin([FromBody] StudentLoginRequest user)
+        {
+            if (user == null)
+                return BadRequest("Invalid login details");
+
+            if (string.IsNullOrWhiteSpace(user.StudentNumber) || string.IsNullOrWhiteSpace(user.Password))
+                return BadRequest("Student number and password are required");
+
+            var existingUser = _context.Users.FirstOrDefault(u =>
+                u.StudentNumber == user.StudentNumber &&
+                u.Role == "Student");
+
+            if (existingUser == null || existingUser.Password != user.Password)
+                return Unauthorized("Invalid student number or password");
+
+            return Ok(BuildLoginResponse(existingUser, "Student login successful"));
+        }
+
+        private object BuildLoginResponse(User user, string message)
+        {
+            var token = _jwtService.GenerateToken(user);
+
+            return new
             {
-                message = "Login successful",
+                message,
                 token = token,
-                role = existingUser.Role,
-                userID = existingUser.UserID
-            });
+                role = user.Role,
+                userID = user.UserID,
+                email = user.Email,
+                studentNumber = user.StudentNumber
+            };
         }
 
         [HttpPost("register")]
@@ -49,27 +81,35 @@ namespace RoomReservationSystem.Controllers
             if (request == null)
                 return BadRequest("Invalid registration details");
 
-            if (string.IsNullOrEmpty(request.FirstName) ||
-                string.IsNullOrEmpty(request.LastName) ||
-                string.IsNullOrEmpty(request.Email) ||
-                string.IsNullOrEmpty(request.Password) ||
-                string.IsNullOrEmpty(request.Role))
-                return BadRequest("All fields are required");
+            if (string.IsNullOrWhiteSpace(request.FirstName) ||
+                string.IsNullOrWhiteSpace(request.LastName) ||
+                string.IsNullOrWhiteSpace(request.Password))
+                return BadRequest("First name, last name, and password are required");
 
-            var validRoles = new[] { "Student", "Staff", "Admin" };
-            if (!validRoles.Contains(request.Role))
-                return BadRequest("Role must be Student, Staff, or Admin");
+            // System rule: this endpoint is only for student onboarding.
+            if (!string.IsNullOrWhiteSpace(request.Role) && request.Role != "Student")
+                return BadRequest("Only students can be registered from this panel");
 
-            if (_context.Users.Any(u => u.Email == request.Email))
+            if (string.IsNullOrWhiteSpace(request.StudentNumber))
+                return BadRequest("Student number is required");
+
+            if (_context.Users.Any(u => u.StudentNumber == request.StudentNumber))
+                return BadRequest("A student with this number already exists");
+
+            string email = string.IsNullOrWhiteSpace(request.Email)
+                ? $"{request.StudentNumber}@students.roomlink.local"
+                : request.Email.Trim();
+
+            if (_context.Users.Any(u => u.Email == email))
                 return BadRequest("A user with this email already exists");
 
             var user = new User
             {
                 FirstName = request.FirstName,
                 LastName = request.LastName,
-                Email = request.Email,
+                Email = email,
                 Password = request.Password,
-                Role = request.Role,
+                Role = "Student",
                 StudentNumber = request.StudentNumber
             };
 
@@ -78,10 +118,11 @@ namespace RoomReservationSystem.Controllers
 
             return Ok(new
             {
-                message = "User registered successfully",
+                message = "Student registered successfully",
                 userID = user.UserID,
                 email = user.Email,
-                role = user.Role
+                role = user.Role,
+                studentNumber = user.StudentNumber
             });
         }
     }
