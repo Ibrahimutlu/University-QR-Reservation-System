@@ -8,6 +8,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using RoomReservationSystem.Data;
 using RoomReservationSystem.Services;
+using System;
 using System.Text;
 
 namespace RoomReservationSystem
@@ -23,11 +24,6 @@ namespace RoomReservationSystem
 
         public void ConfigureServices(IServiceCollection services)
         {
-            // No ReferenceHandler.Preserve — that wraps every collection as
-            // { "$id":"1", "$values":[...] } which breaks plain JSON consumers
-            // (the frontend expects a real array). Cycles are already prevented
-            // by [JsonIgnore] on the back-reference navigation properties of
-            // the entity models.
             services.AddControllers();
 
             services.AddSwaggerGen(c =>
@@ -61,14 +57,26 @@ namespace RoomReservationSystem
                 });
             });
 
+            // ─── Database connection ─────────────────────────────────────
+            // Production: read DATABASE_URL (Railway / Neon style URI).
+            // Development: fall back to ConnectionStrings:DefaultConnection in appsettings.json.
             services.AddDbContext<AppDbContext>(options =>
-                options.UseNpgsql(Configuration.GetConnectionString("DefaultConnection")));
+                options.UseNpgsql(BuildConnectionString(Configuration)));
 
             // Application services
             services.AddScoped<JwtService>();
             services.AddSingleton<QRService>();
 
-            var key = Encoding.ASCII.GetBytes(Configuration["JwtSettings:Secret"]);
+            // ─── JWT ─────────────────────────────────────────────────────
+            // Secret resolution order:
+            //   1. environment variable JWT_SECRET
+            //   2. appsettings JwtSettings:Secret
+            string jwtSecret =
+                Configuration["JWT_SECRET"]
+                ?? Configuration["JwtSettings:Secret"]
+                ?? "DEV_ONLY_FALLBACK_SECRET_REPLACE_IN_PRODUCTION_ENV";
+
+            var key = Encoding.ASCII.GetBytes(jwtSecret);
             services.AddAuthentication(x =>
             {
                 x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -93,10 +101,38 @@ namespace RoomReservationSystem
                 options.AddPolicy("StaffOnly",      p => p.RequireRole("Staff"));
                 options.AddPolicy("AdminOnly",      p => p.RequireRole("Admin"));
                 options.AddPolicy("StudentOrStaff", p => p.RequireRole("Student", "Staff"));
+                options.AddPolicy("StaffOrAdmin",   p => p.RequireRole("Staff", "Admin"));
             });
+
+            // ─── CORS ────────────────────────────────────────────────────
+            // Allowed origins:
+            //   * FRONTEND_URL env var (one or more, comma-separated)
+            //   * localhost:8000 / 8080 / 3000 / 5173 for local dev
+            //   * AllowAll fallback policy is also registered for legacy code paths
+            string frontendUrls = Configuration["FRONTEND_URL"] ?? "";
+            string[] envOrigins = frontendUrls
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
             services.AddCors(options =>
             {
+                options.AddPolicy("AllowFrontend", builder =>
+                {
+                    var origins = new System.Collections.Generic.List<string>
+                    {
+                        "http://localhost:8000",
+                        "http://localhost:8080",
+                        "http://localhost:3000",
+                        "http://localhost:5173",
+                        "http://127.0.0.1:8000",
+                        "http://127.0.0.1:5500"
+                    };
+                    foreach (var o in envOrigins) origins.Add(o);
+                    builder.WithOrigins(origins.ToArray())
+                           .AllowAnyMethod()
+                           .AllowAnyHeader()
+                           .AllowCredentials();
+                });
+
                 options.AddPolicy("AllowAll", builder =>
                 {
                     builder.AllowAnyOrigin()
@@ -111,23 +147,82 @@ namespace RoomReservationSystem
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
-                app.UseSwagger();
-                app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Room Reservation API v1"));
             }
 
-            // HTTPS redirection disabled in dev to keep the frontend (http://)
-            // free of self-signed-cert friction. Re-enable in production.
-            if (!env.IsDevelopment())
+            // Expose Swagger in every environment so Railway demos can use it.
+            app.UseSwagger();
+            app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Room Reservation API v1"));
+
+            // HTTPS redirection only when not on a PaaS (Railway terminates TLS
+            // upstream). The FORCE_HTTPS env var can opt back in if needed.
+            bool forceHttps = string.Equals(Configuration["FORCE_HTTPS"], "true",
+                                            StringComparison.OrdinalIgnoreCase);
+            if (forceHttps)
                 app.UseHttpsRedirection();
 
             app.UseRouting();
-            app.UseCors("AllowAll");
+
+            // Use the strict frontend policy in production, AllowAll in dev.
+            app.UseCors(env.IsDevelopment() ? "AllowAll" : "AllowFrontend");
+
             app.UseAuthentication();
             app.UseAuthorization();
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
+                endpoints.MapGet("/", async ctx =>
+                {
+                    ctx.Response.ContentType = "text/plain";
+                    await ctx.Response.WriteAsync(
+                        "RoomLink API is running. See /swagger for the contract.");
+                });
+                endpoints.MapGet("/health", async ctx =>
+                {
+                    ctx.Response.ContentType = "application/json";
+                    await ctx.Response.WriteAsync("{\"status\":\"ok\"}");
+                });
             });
+        }
+
+        // ─────────────────────────────────────────────────────────────────
+        // Connection string resolver.
+        //
+        //   1. If env var DATABASE_URL is set in URI form (the standard format
+        //      used by Railway / Neon / Heroku), parse it into Npgsql key=value.
+        //   2. Else if a raw key=value string is provided in DATABASE_URL,
+        //      pass it through unchanged.
+        //   3. Else fall back to ConnectionStrings:DefaultConnection in
+        //      appsettings.json (local development).
+        // ─────────────────────────────────────────────────────────────────
+        private static string BuildConnectionString(IConfiguration config)
+        {
+            string dbUrl = config["DATABASE_URL"];
+
+            if (!string.IsNullOrWhiteSpace(dbUrl))
+            {
+                if (dbUrl.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) ||
+                    dbUrl.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+                {
+                    var uri = new Uri(dbUrl);
+                    string user = Uri.UnescapeDataString(uri.UserInfo.Split(':')[0]);
+                    string pass = uri.UserInfo.Contains(':')
+                        ? Uri.UnescapeDataString(uri.UserInfo.Split(':')[1])
+                        : "";
+                    string host = uri.Host;
+                    int    port = uri.Port > 0 ? uri.Port : 5432;
+                    string db   = uri.AbsolutePath.TrimStart('/');
+
+                    // Most managed Postgres providers (Neon, Railway) require SSL.
+                    return $"Host={host};Port={port};Database={db};" +
+                           $"Username={user};Password={pass};" +
+                           $"SSL Mode=Require;Trust Server Certificate=true;";
+                }
+
+                // Treat as a raw Npgsql connection string already.
+                return dbUrl;
+            }
+
+            return config.GetConnectionString("DefaultConnection");
         }
     }
 }
