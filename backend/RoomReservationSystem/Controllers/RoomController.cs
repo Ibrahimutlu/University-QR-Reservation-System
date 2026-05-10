@@ -30,13 +30,18 @@ namespace RoomReservationSystem.Controllers
             if (date == default)
                 date = DateTime.Today;
 
+            // Spec: 2-hour slots between 08:00 and 22:00.
             var workingStart = date.Date.AddHours(8);
-            var workingEnd = date.Date.AddHours(20);
-            var slotDuration = TimeSpan.FromHours(1);
+            var workingEnd = date.Date.AddHours(22);
+            var slotDuration = TimeSpan.FromHours(2);
+
+            // "Live" reservations block a slot (incl. checked-in students).
+            var liveStatuses = new[]
+                { "Pending", "Confirmed", "Active", "CheckedIn" };
 
             var reservations = _context.Reservations
                 .Where(r => r.RoomID == roomId &&
-                       r.Status == "Confirmed" &&
+                       liveStatuses.Contains(r.Status) &&
                        r.StartTime < workingEnd &&
                        r.EndTime > workingStart)
                 .Select(r => new

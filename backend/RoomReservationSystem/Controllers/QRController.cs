@@ -25,11 +25,11 @@ namespace RoomReservationSystem.Controllers
 
         // ──────────────────────────────────────────────────────────────────
         // Render the printable PNG of the room's door sticker QR.
-        // Anyone authenticated can pull it (so admins can print it and
-        // students can display it during a demo).
+        // SPEC RULE: Only staff/admin may VIEW QR codes.  Students scan via
+        // /api/qr/scan and never see the actual code.
         // ──────────────────────────────────────────────────────────────────
         [HttpGet("room/{roomId}")]
-        [Authorize(Roles = "Student,Staff,Admin")]
+        [Authorize(Roles = "Staff,Admin")]
         public IActionResult GetRoomQR(int roomId)
         {
             var room = _context.Rooms.FirstOrDefault(r => r.RoomID == roomId);
@@ -101,9 +101,10 @@ namespace RoomReservationSystem.Controllers
         }
 
         // GET /api/qr/dynamic/{roomId}
-        // Returns the current dynamic QR code for a room (changes every 2 minutes)
+        // Returns the current dynamic (rotating) QR code for a room.
+        // SPEC RULE: only staff/admin may view active QR codes.
         [HttpGet("dynamic/{roomId}")]
-        [Authorize(Roles = "Student,Staff,Admin")]
+        [Authorize(Roles = "Staff,Admin")]
         public IActionResult GetDynamicQR(int roomId)
         {
             var room = _context.Rooms.FirstOrDefault(r => r.RoomID == roomId);
@@ -323,6 +324,158 @@ namespace RoomReservationSystem.Controllers
                 userID        = reservation.UserID,
                 validUntil    = reservation.EndTime
             });
+        }
+
+        // ──────────────────────────────────────────────────────────────────
+        // POST /api/qr/check-in
+        //   Body: { qrValue, roomId }
+        //   Auth: Student / Staff / Admin (caller's identity from JWT)
+        //
+        //   Validates the rotating QR token and the caller's reservation,
+        //   then transitions the reservation to "CheckedIn" and writes a
+        //   scan_log row.  Idempotent: a second check-in is rejected.
+        // ──────────────────────────────────────────────────────────────────
+        [HttpPost("check-in")]
+        [Authorize(Roles = "Student,Staff,Admin")]
+        public IActionResult CheckIn([FromBody] CheckInRequest body)
+        {
+            if (body == null || body.RoomId <= 0)
+                return BadRequest(new { message = "RoomId is required" });
+
+            int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var now = DateTime.Now;
+
+            // Validate QR token if provided.  Accept both static QRCodeValue
+            // and rotating dynamic tokens.
+            if (!string.IsNullOrEmpty(body.QrValue))
+            {
+                bool dynamicOk = _qrService.ValidateDynamicQRValue(body.RoomId, body.QrValue);
+                bool staticOk = _context.QRCodes.Any(q =>
+                    q.RoomID == body.RoomId &&
+                    q.QRCodeValue == body.QrValue &&
+                    q.IsActive);
+                if (!dynamicOk && !staticOk)
+                    return BadRequest(new { message = "QR code is invalid or expired" });
+            }
+
+            var reservation = _context.Reservations.FirstOrDefault(r =>
+                r.RoomID == body.RoomId &&
+                r.UserID == userId &&
+                (r.Status == "Confirmed" || r.Status == "Active") &&
+                r.StartTime <= now &&
+                r.EndTime >= now);
+
+            if (reservation == null)
+                return BadRequest(new
+                {
+                    message = "Access denied",
+                    reason = "No valid reservation for this room at this time"
+                });
+
+            reservation.Status = "CheckedIn";
+            reservation.UpdatedAt = now;
+
+            _context.ScanLogs.Add(new ScanLog
+            {
+                UserID = userId,
+                RoomID = body.RoomId,
+                ReservationID = reservation.ReservationID,
+                ScanTime = now,
+                ScanType = "CheckIn",
+                AccessGranted = true
+            });
+
+            _context.SaveChanges();
+
+            return Ok(new
+            {
+                message = "Checked in",
+                reservationID = reservation.ReservationID,
+                status = reservation.Status,
+                validUntil = reservation.EndTime
+            });
+        }
+
+        // ──────────────────────────────────────────────────────────────────
+        // POST /api/qr/check-out
+        //   Body: { qrValue, roomId }
+        //   Transitions a CheckedIn reservation to CheckedOut and writes a
+        //   scan_log row.
+        // ──────────────────────────────────────────────────────────────────
+        [HttpPost("check-out")]
+        [Authorize(Roles = "Student,Staff,Admin")]
+        public IActionResult CheckOut([FromBody] CheckInRequest body)
+        {
+            if (body == null || body.RoomId <= 0)
+                return BadRequest(new { message = "RoomId is required" });
+
+            int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var now = DateTime.Now;
+
+            var reservation = _context.Reservations.FirstOrDefault(r =>
+                r.RoomID == body.RoomId &&
+                r.UserID == userId &&
+                r.Status == "CheckedIn");
+
+            if (reservation == null)
+                return BadRequest(new
+                {
+                    message = "Cannot check out",
+                    reason = "No active check-in for this room"
+                });
+
+            reservation.Status = "CheckedOut";
+            reservation.UpdatedAt = now;
+
+            _context.ScanLogs.Add(new ScanLog
+            {
+                UserID = userId,
+                RoomID = body.RoomId,
+                ReservationID = reservation.ReservationID,
+                ScanTime = now,
+                ScanType = "CheckOut",
+                AccessGranted = true
+            });
+
+            _context.SaveChanges();
+
+            return Ok(new
+            {
+                message = "Checked out",
+                reservationID = reservation.ReservationID,
+                status = reservation.Status
+            });
+        }
+
+        // ──────────────────────────────────────────────────────────────────
+        // POST /api/qr/rotate/{roomId}
+        //   Force-rotate the active QR token for a room (admin only).
+        // ──────────────────────────────────────────────────────────────────
+        [HttpPost("rotate/{roomId}")]
+        [Authorize(Roles = "Admin")]
+        public IActionResult RotateRoomQR(int roomId)
+        {
+            var qr = _context.QRCodes.FirstOrDefault(q => q.RoomID == roomId);
+            if (qr == null)
+                return NotFound(new { message = "Room QR not found" });
+
+            // Trigger a fresh dynamic value via QRService.  The static value
+            // is preserved for legacy door stickers.
+            string fresh = _qrService.GenerateDynamicQRValue(roomId);
+            return Ok(new
+            {
+                message = "QR rotated",
+                roomID = roomId,
+                qrValue = fresh,
+                qrImage = _qrService.GenerateFromString(fresh),
+                rotatedAt = DateTime.UtcNow
+            });
+        }
+
+        public class CheckInRequest
+        {
+            public int RoomId { get; set; }
+            public string QrValue { get; set; }
         }
 
         public class ReservationQRPayload

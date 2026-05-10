@@ -30,6 +30,8 @@ namespace RoomReservationSystem.Models
 
         public DateTime CreatedAt { get; set; } = DateTime.Now;
 
+        public DateTime UpdatedAt { get; set; } = DateTime.Now;
+
         // JSON payload encoded inside the QR code generated when the
         // reservation is confirmed. Used by the QR validation endpoint
         // to authorise check-in.
