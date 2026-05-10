@@ -284,6 +284,12 @@ function sortSlotsByStartTime(slots) {
     });
 }
 
+function isFutureSlot(slot) {
+    const start = new Date(slot.startDateTime || "");
+    if (isNaN(start.getTime())) return true;
+    return start > new Date();
+}
+
 function isSlotFull(slot) {
     return (
         slot.isAvailable === false ||
@@ -402,8 +408,15 @@ async function loadAvailableSlots() {
                 .filter((slot) => slot.startTime && slot.endTime)
         );
 
-        allSlots = slots;
-        renderSlots(slots);
+        const selectableSlots = slots.filter(isFutureSlot);
+
+        allSlots = selectableSlots;
+        renderSlots(selectableSlots);
+
+        if (slots.length > 0 && selectableSlots.length === 0) {
+            slotsMessage.textContent =
+                "All slots for this date are in the past. Please choose another date.";
+        }
     } catch (error) {
         allSlots = [];
         slotsContainer.innerHTML = "";

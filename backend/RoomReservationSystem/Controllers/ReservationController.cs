@@ -106,30 +106,46 @@ namespace RoomReservationSystem.Controllers
                 return BadRequest("Room is fully booked for the selected time slot");
 
             // ── Persist + QR ─────────────────────────────────────────────
-            reservation.Status = "Confirmed";
-            reservation.CreatedAt = DateTime.Now;
-
-            _context.Reservations.Add(reservation);
-            _context.SaveChanges();
-
-            var qr = _qrService.GenerateReservationQR(
-                reservation.ReservationID,
-                reservation.RoomID,
-                reservation.UserID,
-                reservation.StartTime,
-                reservation.EndTime);
-
-            reservation.QRCodeData = qr.Payload;
-            _context.SaveChanges();
-
-            return Ok(new
+            using var tx = _context.Database.BeginTransaction();
+            try
             {
-                message = "Reservation created successfully",
-                reservationID = reservation.ReservationID,
-                status = reservation.Status,
-                qrPayload = qr.Payload,
-                qrImage = qr.ImageDataUrl
-            });
+                reservation.Status = "Confirmed";
+                reservation.CreatedAt = DateTime.Now;
+                reservation.UpdatedAt = DateTime.Now;
+
+                _context.Reservations.Add(reservation);
+                _context.SaveChanges();
+
+                var qr = _qrService.GenerateReservationQR(
+                    reservation.ReservationID,
+                    reservation.RoomID,
+                    reservation.UserID,
+                    reservation.StartTime,
+                    reservation.EndTime);
+
+                reservation.QRCodeData = qr.Payload;
+                reservation.UpdatedAt = DateTime.Now;
+                _context.SaveChanges();
+
+                tx.Commit();
+
+                return Ok(new
+                {
+                    message = "Reservation created successfully",
+                    reservationID = reservation.ReservationID,
+                    status = reservation.Status,
+                    qrPayload = qr.Payload,
+                    qrImage = qr.ImageDataUrl
+                });
+            }
+            catch
+            {
+                tx.Rollback();
+                return StatusCode(500, new
+                {
+                    message = "Reservation could not be completed due to a QR generation error. Please try again."
+                });
+            }
         }
 
         [HttpGet("{reservationId}")]
@@ -178,11 +194,32 @@ namespace RoomReservationSystem.Controllers
             if (userRole != "Admin" && reservation.UserID != loggedInUserId)
                 return Unauthorized("You can only view your own reservations");
 
-            // Re-render the QR image from the stored payload so the client
-            // never has to keep the image around.
-            string qrImage = string.IsNullOrEmpty(reservation.QRCodeData)
-                ? null
-                : _qrService.GenerateFromString(reservation.QRCodeData);
+            // Re-render the QR image from the stored payload. If historical
+            // rows are missing payload, regenerate from reservation fields.
+            string qrPayload = reservation.QRCodeData;
+            string qrImage = null;
+            try
+            {
+                if (!string.IsNullOrEmpty(qrPayload))
+                {
+                    qrImage = _qrService.GenerateFromString(qrPayload);
+                }
+                else
+                {
+                    var regenerated = _qrService.GenerateReservationQR(
+                        reservation.ReservationID,
+                        reservation.RoomID,
+                        reservation.UserID,
+                        reservation.StartTime,
+                        reservation.EndTime);
+                    qrPayload = regenerated.Payload;
+                    qrImage = regenerated.ImageDataUrl;
+                }
+            }
+            catch
+            {
+                // Keep reservation readable even if QR rendering fails.
+            }
 
             return Ok(new
             {
@@ -194,7 +231,7 @@ namespace RoomReservationSystem.Controllers
                 reservation.EndTime,
                 reservation.Status,
                 reservation.CreatedAt,
-                qrPayload = reservation.QRCodeData,
+                qrPayload,
                 qrImage,
                 reservation.Room,
                 reservation.User
@@ -248,22 +285,49 @@ namespace RoomReservationSystem.Controllers
                 return Ok(new object[] { });
 
             // Augment each row with a freshly-rendered QR image.
-            var enriched = reservations.Select(r => new
+            var enriched = reservations.Select(r =>
             {
-                r.ReservationID,
-                r.UserID,
-                r.RoomID,
-                r.ReservationDate,
-                r.StartTime,
-                r.EndTime,
-                r.Status,
-                r.CreatedAt,
-                qrPayload = r.QRCodeData,
-                qrImage = string.IsNullOrEmpty(r.QRCodeData)
-                                ? null
-                                : _qrService.GenerateFromString(r.QRCodeData),
-                r.Room,
-                r.User
+                string qrPayload = r.QRCodeData;
+                string qrImage;
+
+                try
+                {
+                    if (!string.IsNullOrEmpty(qrPayload))
+                    {
+                        qrImage = _qrService.GenerateFromString(qrPayload);
+                    }
+                    else
+                    {
+                        var regenerated = _qrService.GenerateReservationQR(
+                            r.ReservationID,
+                            r.RoomID,
+                            r.UserID,
+                            r.StartTime,
+                            r.EndTime);
+                        qrPayload = regenerated.Payload;
+                        qrImage = regenerated.ImageDataUrl;
+                    }
+                }
+                catch
+                {
+                    qrImage = null;
+                }
+
+                return new
+                {
+                    r.ReservationID,
+                    r.UserID,
+                    r.RoomID,
+                    r.ReservationDate,
+                    r.StartTime,
+                    r.EndTime,
+                    r.Status,
+                    r.CreatedAt,
+                    qrPayload,
+                    qrImage,
+                    r.Room,
+                    r.User
+                };
             });
 
             return Ok(enriched);

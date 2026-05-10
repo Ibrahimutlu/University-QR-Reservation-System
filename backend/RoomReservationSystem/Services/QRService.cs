@@ -56,11 +56,29 @@ namespace RoomReservationSystem.Services
 
         private static string RenderQRDataUrl(string content)
         {
+            if (string.IsNullOrWhiteSpace(content))
+                throw new ArgumentException("QR content cannot be empty.", nameof(content));
+
             using var generator = new QRCodeGenerator();
             using var qrCodeData = generator.CreateQrCode(content, QRCodeGenerator.ECCLevel.Q);
-            var base64QrCode = new Base64QRCode(qrCodeData);
-            string base64 = base64QrCode.GetGraphic(10);
-            return "data:image/png;base64," + base64;
+
+            // PngByteQRCode is stable on Linux containers (Railway) and
+            // avoids System.Drawing-related runtime issues.
+            try
+            {
+                var pngQrCode = new PngByteQRCode(qrCodeData);
+                byte[] pngBytes = pngQrCode.GetGraphic(10);
+                string base64 = Convert.ToBase64String(pngBytes);
+                return "data:image/png;base64," + base64;
+            }
+            catch
+            {
+                // Fallback for environments where the PNG-byte renderer is
+                // unavailable in the loaded QRCoder variant.
+                var base64QrCode = new Base64QRCode(qrCodeData);
+                string base64 = base64QrCode.GetGraphic(10);
+                return "data:image/png;base64," + base64;
+            }
         }
 
         public string GenerateDynamicQRValue(int roomId)

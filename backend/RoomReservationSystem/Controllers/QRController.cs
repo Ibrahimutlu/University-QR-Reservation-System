@@ -40,7 +40,15 @@ namespace RoomReservationSystem.Controllers
             if (qr == null)
                 return NotFound(new { message = "No QR code is attached to this room" });
 
-            string image = _qrService.GenerateFromString(qr.QRCodeValue);
+            string image = null;
+            try
+            {
+                image = _qrService.GenerateFromString(qr.QRCodeValue);
+            }
+            catch
+            {
+                // Keep endpoint functional even if renderer fails on host.
+            }
 
             return Ok(new
             {
@@ -72,12 +80,12 @@ namespace RoomReservationSystem.Controllers
                     roomName = room.RoomName,
                     qrCodeValue = existingQR.QRCodeValue,
                     isActive = existingQR.IsActive,
-                    qrImage = _qrService.GenerateFromString(existingQR.QRCodeValue)
+                    qrImage = SafeGenerateQrImage(existingQR.QRCodeValue)
                 });
 
             string qrCodeValue = $"ROOM-{room.RoomID}-{room.RoomName.Replace(" ", "").ToUpper()}";
 
-            string qrImage = _qrService.GenerateFromString(qrCodeValue);
+            string qrImage = SafeGenerateQrImage(qrCodeValue);
 
             var qr = new RoomReservationSystem.Models.QR
             {
@@ -112,7 +120,7 @@ namespace RoomReservationSystem.Controllers
                 return NotFound(new { message = "Room does not exist" });
 
             string qrValue = _qrService.GenerateDynamicQRValue(roomId);
-            string qrImage = _qrService.GenerateFromString(qrValue);
+            string qrImage = SafeGenerateQrImage(qrValue);
 
             return Ok(new
             {
@@ -467,9 +475,21 @@ namespace RoomReservationSystem.Controllers
                 message = "QR rotated",
                 roomID = roomId,
                 qrValue = fresh,
-                qrImage = _qrService.GenerateFromString(fresh),
+                qrImage = SafeGenerateQrImage(fresh),
                 rotatedAt = DateTime.UtcNow
             });
+        }
+
+        private string SafeGenerateQrImage(string rawValue)
+        {
+            try
+            {
+                return _qrService.GenerateFromString(rawValue);
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         public class CheckInRequest
