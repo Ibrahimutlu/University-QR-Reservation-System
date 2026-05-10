@@ -176,25 +176,23 @@ function setQRNotAvailable(message = "QR is currently unavailable.") {
 }
 
 async function generateExternalRoomQr(roomId, roomName) {
-  const response = await fetch("http://localhost:3000/api/qr/generate-room", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      roomId: roomId,
-      roomName: roomName || "",
-      frontendBaseUrl: "http://localhost:5500"
-    })
+  // Spec: only staff/admin may VIEW QR codes.  Backend enforces with 403
+  // when a student calls this endpoint; the caller already handles errors.
+  const base  = (typeof window !== "undefined" && window.RRS_API_BASE
+      ? window.RRS_API_BASE
+      : "http://localhost:5000");
+  const token = localStorage.getItem("token");
+  const response = await fetch(base + "/api/qr/room/" + roomId, {
+    headers: token ? { Authorization: "Bearer " + token } : {}
   });
 
-  const data = await response.json();
-
-  if (!response.ok || !data.success) {
-    throw new Error(data.error || "Failed to generate QR.");
+  if (!response.ok) {
+    let msg = "Failed to generate QR.";
+    if (response.status === 403) msg = "Only staff/admin can view this QR.";
+    if (response.status === 404) msg = "Room QR not found.";
+    throw new Error(msg);
   }
-
-  return data;
+  return await response.json();
 }
 
 async function loadExternalRoomQr(reservation) {
