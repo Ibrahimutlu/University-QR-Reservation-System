@@ -124,7 +124,7 @@ A consolidated change log for the production-readiness pass.
 
 3. **Frontend (Vercel)**
    * Import repo → set Root Dir = `frontend`.
-   * No build step. Add `<script>window.RRS_API_BASE="<railway-url>"</script>` to entry HTMLs (or use the `<meta name="api-base">` mechanism).
+   * No build step. Each entry HTML already injects `window.RRS_API_BASE = "https://university-qr-reservation-system-production.up.railway.app"` before `js/config.js` (or its flat-script equivalent).
    * Deploy. Open `https://<project>.vercel.app`.
 
 4. **Wire CORS**

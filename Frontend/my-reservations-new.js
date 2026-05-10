@@ -1,4 +1,6 @@
-const API_BASE_URL = "https://localhost:5001/api/reservation";
+const API_BASE_URL = (typeof window !== "undefined" && window.RRS_API_BASE
+    ? window.RRS_API_BASE
+    : "http://localhost:5000") + "/api/reservation";
 
 const reservationCount = document.getElementById("reservationCount");
 const reservationsContainer = document.getElementById("reservationsContainer");

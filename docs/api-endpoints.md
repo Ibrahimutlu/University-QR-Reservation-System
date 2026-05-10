@@ -2,7 +2,7 @@
 
 Base URL:
 * **Local**: `http://localhost:5000`
-* **Production**: `https://your-api.up.railway.app`
+* **Production**: `https://university-qr-reservation-system-production.up.railway.app`
 
 All non-public endpoints expect:
 

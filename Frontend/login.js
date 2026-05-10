@@ -1,4 +1,8 @@
-const API_BASE_URL = "https://localhost:5001/api/auth";
+// Resolves at runtime: production HTML pages set window.RRS_API_BASE
+// before this script loads.  Local dev falls back to http://localhost:5000.
+const API_BASE_URL = (typeof window !== "undefined" && window.RRS_API_BASE
+    ? window.RRS_API_BASE
+    : "http://localhost:5000") + "/api/auth";
 
 const loginForm = document.getElementById("loginForm");
 const emailInput = document.getElementById("email");

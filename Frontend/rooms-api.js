@@ -1,4 +1,6 @@
-const API_BASE_URL = "https://localhost:5001/api/room";
+const API_BASE_URL = (typeof window !== "undefined" && window.RRS_API_BASE
+    ? window.RRS_API_BASE
+    : "http://localhost:5000") + "/api/room";
 
 const roomsContainer = document.getElementById("roomsContainer");
 const filterForm = document.getElementById("filterForm");

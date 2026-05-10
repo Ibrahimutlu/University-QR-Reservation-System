@@ -78,7 +78,7 @@ You should see Room A, Room B, Room C.
 6. Open `https://.../swagger` to verify the API.
 7. Test login:
    ```bash
-   curl -X POST https://your-api.up.railway.app/api/auth/login \
+   curl -X POST https://university-qr-reservation-system-production.up.railway.app/api/auth/login \
         -H "Content-Type: application/json" \
         -d '{"email":"admin@university.com","password":"admin123"}'
    ```
@@ -103,13 +103,13 @@ There are three equally-valid ways. **Pick one.**
 **(a) Hard-code at deploy time** — open `frontend/index.html` (and any other entry HTMLs) and add this line **before** `<script src="js/config.js">`:
 
 ```html
-<script>window.RRS_API_BASE = "https://your-api.up.railway.app";</script>
+<script>window.RRS_API_BASE = "https://university-qr-reservation-system-production.up.railway.app";</script>
 ```
 
 **(b) Per-page `<meta>` tag** — drop into the `<head>` of every HTML page:
 
 ```html
-<meta name="api-base" content="https://your-api.up.railway.app">
+<meta name="api-base" content="https://university-qr-reservation-system-production.up.railway.app">
 ```
 
 **(c) Env-var-injected file** — add a `frontend/config.production.js` that emits `window.RRS_API_BASE`, and reference it from the HTML `<head>` only when `ASPNETCORE_ENVIRONMENT=Production`. Useful if you switch to Vite or Next later.
@@ -154,7 +154,7 @@ If the browser console shows `CORS error: blocked by Access-Control-Allow-Origin
 3. Inspect the actual response headers:
    ```bash
    curl -I -H "Origin: https://your-frontend.vercel.app" \
-        https://your-api.up.railway.app/api/room
+        https://university-qr-reservation-system-production.up.railway.app/api/room
    ```
    Look for `Access-Control-Allow-Origin: https://your-frontend.vercel.app`.
 
@@ -180,16 +180,16 @@ After deployment, run these from any machine:
 
 ```bash
 # 1. Backend is live
-curl https://your-api.up.railway.app/health
+curl https://university-qr-reservation-system-production.up.railway.app/health
 
 # 2. Login as admin
-TOKEN=$(curl -sX POST https://your-api.up.railway.app/api/auth/login \
+TOKEN=$(curl -sX POST https://university-qr-reservation-system-production.up.railway.app/api/auth/login \
         -H "Content-Type: application/json" \
         -d '{"email":"admin@university.com","password":"admin123"}' \
         | jq -r .token)
 
 # 3. List rooms (should return 3)
-curl -s https://your-api.up.railway.app/api/room \
+curl -s https://university-qr-reservation-system-production.up.railway.app/api/room \
      -H "Authorization: Bearer $TOKEN" | jq length
 
 # 4. Frontend serves

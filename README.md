@@ -1,7 +1,12 @@
 # RoomLink — University QR Room Reservation System
 
 > **Course:** Com6064 Software Engineering
-> **Status:** Production-ready — deployable to Railway + Vercel; runs locally with the one-click launcher.
+> **Status:** Production-ready — deployed to Railway + Vercel; runs locally with the one-click launcher.
+
+**Live URLs:**
+- Backend API: <https://university-qr-reservation-system-production.up.railway.app>
+- Swagger:     <https://university-qr-reservation-system-production.up.railway.app/swagger>
+- Frontend:    *(set after first Vercel deploy)*
 
 A three-tier room reservation platform with **QR-based check-in / check-out**.
 Students reserve study rooms in fixed 2-hour slots; staff and administrators

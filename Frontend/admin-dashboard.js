@@ -1,5 +1,8 @@
-const ROOM_API_BASE_URL = "https://localhost:5001/api/room";
-const RESERVATION_API_BASE_URL = "https://localhost:5001/api/reservation";
+const __RRS_BASE = (typeof window !== "undefined" && window.RRS_API_BASE
+    ? window.RRS_API_BASE
+    : "http://localhost:5000");
+const ROOM_API_BASE_URL        = __RRS_BASE + "/api/room";
+const RESERVATION_API_BASE_URL = __RRS_BASE + "/api/reservation";
 
 const roomIdInput = document.getElementById("roomId");
 const roomNameInput = document.getElementById("roomName");

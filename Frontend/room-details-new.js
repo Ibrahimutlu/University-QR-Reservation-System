@@ -1,4 +1,6 @@
-const ROOM_API_BASE_URL = "https://localhost:5001/api/room";
+const ROOM_API_BASE_URL = (typeof window !== "undefined" && window.RRS_API_BASE
+    ? window.RRS_API_BASE
+    : "http://localhost:5000") + "/api/room";
 
 const heroRoomName = document.getElementById("heroRoomName");
 const heroRoomSubtitle = document.getElementById("heroRoomSubtitle");
