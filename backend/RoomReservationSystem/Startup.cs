@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using System.Linq;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -106,34 +107,57 @@ namespace RoomReservationSystem
             });
 
             // ─── CORS ────────────────────────────────────────────────────
-            // Allowed origins:
-            //   * FRONTEND_URL env var (one or more, comma-separated)
-            //   * localhost:8000 / 8080 / 3000 / 5173 for local dev
-            //   * AllowAll fallback policy is also registered for legacy code paths
+            // The allow-list is the UNION of:
+            //   * baked-in production Vercel URL (default, never empty)
+            //   * baked-in local dev origins (localhost / 127.0.0.1 on common ports)
+            //   * any extra origins from FRONTEND_URL env var (comma-separated)
+            //
+            // FRONTEND_URL ADDS to the list — it does NOT replace the baked-in
+            // production URL.  So even if the env var is forgotten, the live
+            // Vercel frontend still works.  Trailing slashes are stripped.
+
+            const string PROD_VERCEL_URL =
+                "https://university-qr-reservation-system.vercel.app";
+
+            var bakedOrigins = new System.Collections.Generic.List<string>
+            {
+                PROD_VERCEL_URL,
+                "http://localhost:8000",
+                "http://localhost:8080",
+                "http://localhost:3000",
+                "http://localhost:5173",
+                "http://127.0.0.1:8000",
+                "http://127.0.0.1:3000",
+                "http://127.0.0.1:5500"
+            };
+
             string frontendUrls = Configuration["FRONTEND_URL"] ?? "";
-            string[] envOrigins = frontendUrls
-                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            foreach (var raw in frontendUrls.Split(
+                ',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                bakedOrigins.Add(raw.TrimEnd('/'));
+            }
+
+            // Deduplicate + strip trailing slashes for safety.
+            var allowedOrigins = new System.Collections.Generic.HashSet<string>(
+                System.StringComparer.OrdinalIgnoreCase);
+            foreach (var o in bakedOrigins)
+            {
+                if (string.IsNullOrWhiteSpace(o)) continue;
+                allowedOrigins.Add(o.TrimEnd('/'));
+            }
 
             services.AddCors(options =>
             {
                 options.AddPolicy("AllowFrontend", builder =>
                 {
-                    var origins = new System.Collections.Generic.List<string>
-                    {
-                        "http://localhost:8000",
-                        "http://localhost:8080",
-                        "http://localhost:3000",
-                        "http://localhost:5173",
-                        "http://127.0.0.1:8000",
-                        "http://127.0.0.1:5500"
-                    };
-                    foreach (var o in envOrigins) origins.Add(o);
-                    builder.WithOrigins(origins.ToArray())
+                    builder.WithOrigins(allowedOrigins.ToArray())
                            .AllowAnyMethod()
                            .AllowAnyHeader()
                            .AllowCredentials();
                 });
 
+                // Kept for legacy code paths only — not used by the pipeline below.
                 options.AddPolicy("AllowAll", builder =>
                 {
                     builder.AllowAnyOrigin()
@@ -150,7 +174,11 @@ namespace RoomReservationSystem
                 app.UseDeveloperExceptionPage();
             }
 
-            // ─── Security headers (applied before anything else) ─────────
+            // ─── Security headers (applied to every response) ────────────
+            // CSP is intentionally NOT set here — this app serves only API
+            // responses (the frontend lives on Vercel and sets its own CSP
+            // via vercel.json). Setting connect-src 'self' on API responses
+            // would only confuse anyone inspecting them.
             app.Use(async (ctx, next) =>
             {
                 var h = ctx.Response.Headers;
@@ -158,15 +186,6 @@ namespace RoomReservationSystem
                 h["X-Frame-Options"]        = "DENY";
                 h["Referrer-Policy"]        = "strict-origin-when-cross-origin";
                 h["Permissions-Policy"]     = "camera=(self), microphone=(), geolocation=()";
-                // Allow inline scripts (we use them for window.RRS_API_BASE)
-                // but lock everything else down.
-                h["Content-Security-Policy"] =
-                    "default-src 'self'; " +
-                    "img-src 'self' data: blob: https:; " +
-                    "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://unpkg.com; " +
-                    "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://fonts.googleapis.com; " +
-                    "font-src 'self' https://fonts.gstatic.com; " +
-                    "connect-src 'self'";
                 await next();
             });
 
@@ -216,8 +235,10 @@ namespace RoomReservationSystem
 
             app.UseRouting();
 
-            // Use the strict frontend policy in production, AllowAll in dev.
-            app.UseCors(env.IsDevelopment() ? "AllowAll" : "AllowFrontend");
+            // Same strict allow-list in dev and prod. The list already
+            // contains every localhost origin we need locally, so there is no
+            // reason to fall back to AllowAnyOrigin even in development.
+            app.UseCors("AllowFrontend");
 
             app.UseAuthentication();
             app.UseAuthorization();
