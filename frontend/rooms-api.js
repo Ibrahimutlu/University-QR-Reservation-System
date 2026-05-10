@@ -282,6 +282,26 @@ async function loadRooms() {
         rooms = [];
         renderRooms([]);
         updateStats([]);
+
+        const titleEl = emptyState.querySelector("h3");
+        const textEl = emptyState.querySelector("p");
+        const rawMessage = String(error?.message || "");
+        const unauthorized =
+            /401|unauthorized|onaylanmad|session expired/i.test(rawMessage);
+
+        if (titleEl) {
+            titleEl.textContent = unauthorized
+                ? "Session is not authorized"
+                : "Rooms could not be loaded";
+        }
+
+        if (textEl) {
+            textEl.textContent = unauthorized
+                ? "Your login token is being rejected by the backend. Please sign out and log in again."
+                : "Unable to fetch room data from backend. Please try again.";
+        }
+
+        emptyState.classList.remove("hidden");
     }
 }
 

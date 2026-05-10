@@ -15,8 +15,22 @@ namespace RoomReservationSystem.Services
 
         public JwtService(IConfiguration configuration)
         {
-            _secret = configuration["JwtSettings:Secret"];
-            _expiryInDays = int.Parse(configuration["JwtSettings:ExpiryInDays"]);
+            // Keep secret resolution in sync with Startup token validation.
+            _secret =
+                configuration["JWT_SECRET"]
+                ?? configuration["JwtSettings:Secret"]
+                ?? "DEV_ONLY_FALLBACK_SECRET_REPLACE_IN_PRODUCTION_ENV";
+
+            var expiryRaw =
+                configuration["JWT_EXPIRY_DAYS"]
+                ?? configuration["JwtSettings:ExpiryInDays"];
+
+            if (!int.TryParse(expiryRaw, out var expiryInDays) || expiryInDays <= 0)
+            {
+                expiryInDays = 7;
+            }
+
+            _expiryInDays = expiryInDays;
         }
 
         public string GenerateToken(User user)
