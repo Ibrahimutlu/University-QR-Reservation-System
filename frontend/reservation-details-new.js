@@ -33,15 +33,19 @@ const summaryStatusEl = document.getElementById("summaryStatus");
 const summaryStartEl = document.getElementById("summaryStart");
 const summaryEndEl = document.getElementById("summaryEnd");
 
-const qrBox = document.getElementById("qrBox");
-const qrFallbackText = document.getElementById("qrFallbackText");
-const qrImage = document.getElementById("qrImage");
-const qrMessage = document.getElementById("qrMessage");
-const qrStatus = document.getElementById("qrStatus");
-const qrExpiry = document.getElementById("qrExpiry");
-const viewQrBtn = document.getElementById("viewQrBtn");
-const qrReservationIdText = document.getElementById("qrReservationIdText");
-const qrRoomNameText = document.getElementById("qrRoomNameText");
+// QR panel removed from the student view per project spec.
+// All QR DOM lookups left in place would be null — explicit no-op below
+// avoids "Cannot read property of null" if older code paths still reference
+// them.
+const qrBox = null;
+const qrFallbackText = null;
+const qrImage = null;
+const qrMessage = null;
+const qrStatus = null;
+const qrExpiry = null;
+const viewQrBtn = null;
+const qrReservationIdText = null;
+const qrRoomNameText = null;
 
 function getToken() {
   return localStorage.getItem("token") || localStorage.getItem("rrs.token");
@@ -188,74 +192,12 @@ function getRoomDisplayName(reservation) {
   return "-";
 }
 
-function setQRNotAvailable(message = "QR is currently unavailable.") {
-  qrImage.classList.add("hidden");
-  qrImage.removeAttribute("src");
-  qrFallbackText.classList.remove("hidden");
-  qrBox.classList.remove("has-image");
-  qrMessage.textContent = message;
-  qrStatus.textContent = "Not Available";
-  qrExpiry.textContent = "-";
-  viewQrBtn.textContent = "QR Not Ready";
-  viewQrBtn.disabled = true;
-  viewQrBtn.onclick = null;
-}
-
-async function generateExternalRoomQr(roomId, roomName) {
-  // Spec: only staff/admin may VIEW QR codes.  Backend enforces with 403
-  // when a student calls this endpoint; the caller already handles errors.
-  const base  = (typeof window !== "undefined" && window.RRS_API_BASE
-      ? window.RRS_API_BASE
-      : "http://localhost:5000");
-  const token = getToken();
-  const response = await fetch(base + "/api/qr/room/" + roomId, {
-    headers: token ? { Authorization: "Bearer " + token } : {}
-  });
-
-  if (!response.ok) {
-    let msg = "Failed to generate QR.";
-    if (response.status === 403) msg = "Only staff/admin can view this QR.";
-    if (response.status === 404) msg = "Room QR not found.";
-    throw new Error(msg);
-  }
-  return await response.json();
-}
-
-async function loadExternalRoomQr(reservation) {
-  const roomId = getRoomId(reservation);
-  const roomName = getRoomDisplayName(reservation);
-
-  if (!roomId) {
-    setQRNotAvailable("Room not found.");
-    return;
-  }
-
-  try {
-    const qrData = await generateExternalRoomQr(roomId, roomName);
-
-    if (!qrData.qrImage) {
-      setQRNotAvailable();
-      return;
-    }
-
-    qrImage.src = qrData.qrImage;
-    qrImage.classList.remove("hidden");
-    qrFallbackText.classList.add("hidden");
-    qrBox.classList.add("has-image");
-
-    qrStatus.textContent = "Ready";
-    qrExpiry.textContent = "Dynamic QR";
-    qrMessage.textContent = "Generated for this reservation.";
-    viewQrBtn.disabled = false;
-    viewQrBtn.textContent = "Open Printable QR";
-    viewQrBtn.onclick = () => {
-      window.location.href = `print-qr.html?room=${encodeURIComponent(roomId)}`;
-    };
-  } catch (error) {
-    console.error("External QR load failed:", error);
-    setQRNotAvailable("QR generation failed.");
-  }
-}
+// QR display helpers intentionally removed.
+// Per project spec, students never see QR codes inside the UI; they scan
+// the door's rotating QR via scan.html.  The reservation details page now
+// directs the user to scan.html via a CTA in the HTML.
+function setQRNotAvailable() { /* no-op */ }
+function loadExternalRoomQr() { /* no-op */ }
 
 function populateDetails(reservation) {
   const reservationId = getReservationNumericId(reservation) ?? "-";
@@ -281,14 +223,7 @@ function populateDetails(reservation) {
   summaryStartEl.textContent = formatDateTime(start);
   summaryEndEl.textContent = formatDateTime(end);
 
-  if (qrReservationIdText) {
-    qrReservationIdText.textContent = reservationId;
-  }
-
-  if (qrRoomNameText) {
-    qrRoomNameText.textContent = roomDisplay;
-  }
-
+  // qrReservationIdText / qrRoomNameText panel was removed from this page.
   statusBadge.textContent = status;
   statusBadge.className = `status-badge ${getStatusClass(status)}`;
 
@@ -316,7 +251,7 @@ function populateDetails(reservation) {
   }
 
   detailsContent.classList.remove("hidden");
-  loadExternalRoomQr(reservation);
+  // QR panel removed for students — see scan.html for entry/exit.
 }
 
 async function apiRequest(url, options = {}) {

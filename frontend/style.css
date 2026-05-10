@@ -1325,3 +1325,353 @@ button:disabled,
     margin: 0 auto;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────
+   QR Monitor — Staff/Admin live rotating QR display
+   ─────────────────────────────────────────────────────────────── */
+
+.qr-monitor-section {
+  padding: 40px 0 80px;
+}
+
+.qr-monitor-section .section-heading {
+  margin-bottom: 28px;
+}
+
+.qr-monitor-meta {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  align-items: center;
+  color: var(--muted);
+  font-size: 0.95rem;
+  margin-top: 6px;
+}
+
+.qr-monitor-meta .meta-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
+
+.qr-monitor-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 28px;
+}
+
+@media (max-width: 1024px) {
+  .qr-monitor-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 640px) {
+  .qr-monitor-grid { grid-template-columns: 1fr; }
+}
+
+.qr-monitor-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.qr-monitor-card h3 {
+  margin: 0 0 4px;
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.qr-monitor-card .room-meta {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-bottom: 18px;
+}
+
+.qr-monitor-card .qr-image-frame {
+  width: 100%;
+  max-width: 320px;
+  aspect-ratio: 1 / 1;
+  background: #fff;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+
+.qr-monitor-card .qr-image-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: opacity 280ms ease;
+}
+
+.qr-monitor-card .qr-image-frame.fading img {
+  opacity: 0.0;
+}
+
+.qr-monitor-card .countdown-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.qr-monitor-card .countdown-row strong {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.qr-monitor-card .error-banner {
+  color: var(--danger);
+  font-size: 0.88rem;
+  padding: 10px 14px;
+  background: rgba(203, 28, 34, 0.08);
+  border-radius: var(--radius-sm);
+  margin-top: 12px;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Scanner page — Set-B-styled QR scanner
+   ─────────────────────────────────────────────────────────────── */
+
+.scanner-section {
+  padding: 40px 0 80px;
+}
+
+.scanner-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 28px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.scan-mode-toggle {
+  display: inline-flex;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  padding: 4px;
+  align-self: center;
+}
+
+.scan-mode-toggle button {
+  appearance: none;
+  border: none;
+  background: transparent;
+  padding: 10px 22px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--muted);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.scan-mode-toggle button.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.scanner-frame {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+}
+
+.scanner-frame #reader {
+  width: 100%;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.scanner-frame .scanner-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.scanner-frame .manual-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.scanner-frame .manual-row input {
+  flex: 1;
+  min-width: 200px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  font-size: 0.95rem;
+  background: var(--bg);
+}
+
+.access-result {
+  border-radius: var(--radius-lg);
+  padding: 28px 24px;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--line);
+}
+
+.access-result h3 {
+  margin: 0 0 8px;
+  font-size: 1.5rem;
+}
+
+.access-result .meta {
+  color: var(--muted);
+  font-size: 0.95rem;
+  margin: 6px 0;
+}
+
+.access-result.granted {
+  background: rgba(20, 134, 61, 0.06);
+  border-color: rgba(20, 134, 61, 0.25);
+}
+
+.access-result.granted h3 { color: var(--success); }
+
+.access-result.denied {
+  background: rgba(203, 28, 34, 0.06);
+  border-color: rgba(203, 28, 34, 0.25);
+}
+
+.access-result.denied h3 { color: var(--danger); }
+
+.access-result .result-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.access-result.granted .result-icon {
+  background: rgba(20, 134, 61, 0.12);
+  color: var(--success);
+}
+
+.access-result.denied .result-icon {
+  background: rgba(203, 28, 34, 0.12);
+  color: var(--danger);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Inline filter — replaces the bulky rooms.html filter card
+   ─────────────────────────────────────────────────────────────── */
+
+.filter-inline {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 16px 0 32px;
+}
+
+.filter-inline .field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filter-inline label {
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.filter-inline input,
+.filter-inline select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  padding: 10px 18px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  color: var(--text);
+  min-width: 180px;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.filter-inline input:focus,
+.filter-inline select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.15);
+}
+
+.filter-inline .result-count {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 640px) {
+  .filter-inline .field { flex: 1; }
+  .filter-inline input,
+  .filter-inline select { min-width: 0; width: 100%; }
+  .filter-inline .result-count { margin-left: 0; flex-basis: 100%; }
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Check-in info card on reservation-details
+   ─────────────────────────────────────────────────────────────── */
+
+.checkin-info {
+  margin-top: 32px;
+}
+
+.checkin-info .info-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  box-shadow: var(--shadow-sm);
+}
+
+.checkin-info .info-card h3 {
+  margin: 0 0 8px;
+  font-size: 1.2rem;
+}
+
+.checkin-info .info-card p {
+  color: var(--muted);
+  margin: 0 0 18px;
+  line-height: 1.55;
+}
+
+.checkin-info .info-card .primary-btn {
+  display: inline-block;
+}
+

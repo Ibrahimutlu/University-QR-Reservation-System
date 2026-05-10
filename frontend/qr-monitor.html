@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Live QR Monitor | University Room Reservation</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <div class="page-bg"></div>
+
+    <header class="site-header">
+        <div class="container header-container">
+            <div class="brand">
+                <div class="brand-badge">QR</div>
+                <div class="brand-text">
+                    <h1>QR-Integrated University Room Reservation System</h1>
+                    <p>Live QR Monitor &mdash; Staff &amp; Admin</p>
+                </div>
+            </div>
+
+            <nav class="navbar">
+                <a class="nav-link" href="rooms.html">Rooms</a>
+                <a class="nav-link" href="my-reservations.html">My Reservations</a>
+                <a class="nav-link" href="admin-dashboard.html">Dashboard</a>
+                <a class="nav-link active" href="qr-monitor.html">Live QR Monitor</a>
+                <button id="logoutBtn" class="secondary-btn" type="button">Logout</button>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="qr-monitor-section">
+            <div class="container">
+                <div class="section-heading">
+                    <h2>Live QR Monitor</h2>
+                    <p>Each room shows the currently valid QR token. Codes rotate automatically every 2 minutes &mdash; students must scan the active code to check in or out.</p>
+                    <div class="qr-monitor-meta">
+                        <span class="meta-dot" aria-hidden="true"></span>
+                        <span>Live &mdash; polling every <strong>15&nbsp;seconds</strong></span>
+                        <span>Rotation interval: <strong>2&nbsp;minutes</strong></span>
+                    </div>
+                </div>
+
+                <div id="qrMonitorGrid" class="qr-monitor-grid"></div>
+
+                <div id="qrMonitorEmpty" class="empty-state hidden">
+                    <h3>No rooms available</h3>
+                    <p>Add at least one room from the admin dashboard before opening this monitor.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container footer-container">
+            <p>QR-Integrated University Room Reservation System</p>
+        </div>
+    </footer>
+
+    <script>window.RRS_API_BASE = "https://university-qr-reservation-system-production.up.railway.app";</script>
+    <script src="qr-monitor.js?v=1"></script>
+</body>
+</html>
