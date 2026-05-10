@@ -1,77 +1,163 @@
-// QR scanner page — uses html5-qrcode for the camera feed.
 Auth.requireAuth();
 Nav.render("scan");
 
-const startBtn  = document.getElementById("start-btn");
-const stopBtn   = document.getElementById("stop-btn");
+const startBtn = document.getElementById("start-btn");
+const stopBtn = document.getElementById("stop-btn");
 const manualBtn = document.getElementById("manual-btn");
-const manualEl  = document.getElementById("manual");
-const resultEl  = document.getElementById("result");
+const manualEl = document.getElementById("manual");
+const resultEl = document.getElementById("result");
+const scanModeEl = document.getElementById("scanMode");
 
 let html5QrCode = null;
-let scanning    = false;
+let scanning = false;
 
-async function handleScanned(text) {
-  // Avoid double-firing while we route the result.
-  if (!scanning) return;
-  scanning = false;
-  await stopCamera();
-
-  await routePayload(text);
+function activeMode() {
+  const raw = (scanModeEl && scanModeEl.value) || "validate";
+  return ["validate", "checkin", "checkout"].includes(raw) ? raw : "validate";
 }
 
-async function routePayload(text) {
+function extractRoomIdFromText(text) {
+  const roomPattern = /ROOM-(\d+)-/i;
+  const roomMatch = String(text || "").match(roomPattern);
+  if (roomMatch && roomMatch[1]) return Number(roomMatch[1]);
+
+  const numeric = Number(text);
+  if (Number.isInteger(numeric) && numeric > 0) return numeric;
+
+  return null;
+}
+
+function tryParseJson(text) {
   try {
-    let res;
-    if (text.trim().startsWith("{")) {
-      // Looks like a reservation QR (JSON payload)
-      res = await Api.validateReservationQR(text);
-    } else {
-      // Plain string → room sticker
-      res = await Api.validateRoomQR(text);
-    }
-    showSuccess(res);
-  } catch (err) {
-    showError(err.message);
+    return JSON.parse(text);
+  } catch {
+    return null;
   }
 }
 
+function roomIdFromReservationPayload(payload) {
+  if (!payload || typeof payload !== "object") return null;
+  const candidates = [payload.roomId, payload.RoomId, payload.roomID, payload.RoomID];
+  for (const c of candidates) {
+    const n = Number(c);
+    if (Number.isInteger(n) && n > 0) return n;
+  }
+  return null;
+}
+
+function normalizeSuccessData(raw) {
+  return {
+    message: raw?.message || "Success",
+    reservationID: raw?.reservationID ?? raw?.ReservationID ?? raw?.reservationId ?? null,
+    roomID: raw?.roomID ?? raw?.RoomID ?? raw?.roomId ?? null,
+    userID: raw?.userID ?? raw?.UserID ?? raw?.userId ?? null,
+    status: raw?.status ?? raw?.Status ?? null,
+    validUntil: raw?.validUntil ?? raw?.ValidUntil ?? null
+  };
+}
+
+async function routePayload(text) {
+  const mode = activeMode();
+  const value = String(text || "").trim();
+
+  if (!value) {
+    throw new Error("QR value is empty.");
+  }
+
+  const asJson = value.startsWith("{") ? tryParseJson(value) : null;
+
+  if (mode === "validate") {
+    if (asJson) {
+      return normalizeSuccessData(await Api.validateReservationQR(value));
+    }
+    return normalizeSuccessData(await Api.validateRoomQR(value));
+  }
+
+  // check-in / check-out flow
+  let roomId = null;
+  let qrValue = null;
+
+  if (asJson) {
+    roomId = roomIdFromReservationPayload(asJson);
+    if (!roomId) {
+      const validated = await Api.validateReservationQR(value);
+      roomId = Number(validated.roomID ?? validated.RoomID ?? 0) || null;
+    }
+  } else {
+    roomId = extractRoomIdFromText(value);
+    qrValue = value;
+  }
+
+  if (!roomId) {
+    throw new Error("Room ID could not be resolved from QR payload.");
+  }
+
+  const payload = { roomId, qrValue };
+
+  if (mode === "checkin") {
+    return normalizeSuccessData(await Api.checkIn(payload));
+  }
+
+  return normalizeSuccessData(await Api.checkOut(payload));
+}
+
 function showSuccess(res) {
+  const actionLabel = activeMode() === "validate"
+    ? "Access Validation Successful"
+    : activeMode() === "checkin"
+      ? "Check-In Successful"
+      : "Check-Out Successful";
+
   resultEl.innerHTML = `
-    <div class="card p-6 border-l-4" style="border-left-color:#10b981">
-      <div class="flex items-center gap-3 mb-2">
-        <div class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-2xl">✓</div>
-        <h3 class="text-lg font-semibold text-emerald-700">Access granted</h3>
-      </div>
-      <dl class="grid grid-cols-2 gap-y-2 text-sm mt-3">
-        ${res.reservationID ? `<dt class="text-slate-500">Reservation</dt><dd class="text-slate-900 font-medium">#${res.reservationID}</dd>` : ""}
-        ${res.roomID        ? `<dt class="text-slate-500">Room</dt><dd class="text-slate-900 font-medium">#${res.roomID}</dd>` : ""}
-        ${res.userID        ? `<dt class="text-slate-500">User</dt><dd class="text-slate-900 font-medium">#${res.userID}</dd>` : ""}
-        ${res.validUntil    ? `<dt class="text-slate-500">Valid until</dt><dd class="text-slate-900 font-medium">${new Date(res.validUntil).toLocaleString()}</dd>` : ""}
+    <div class="result-card success">
+      <h3>${actionLabel}</h3>
+      <p>${res.message || "Operation completed successfully."}</p>
+      <dl>
+        ${res.reservationID ? `<dt>Reservation</dt><dd>#${res.reservationID}</dd>` : ""}
+        ${res.roomID ? `<dt>Room</dt><dd>#${res.roomID}</dd>` : ""}
+        ${res.userID ? `<dt>User</dt><dd>#${res.userID}</dd>` : ""}
+        ${res.status ? `<dt>Status</dt><dd>${res.status}</dd>` : ""}
+        ${res.validUntil ? `<dt>Valid Until</dt><dd>${new Date(res.validUntil).toLocaleString()}</dd>` : ""}
       </dl>
-      <button class="btn-primary mt-5" onclick="reset()">Scan again</button>
+      <div class="scanner-actions">
+        <button class="primary-btn" type="button" onclick="window.scanReset()">Scan Again</button>
+      </div>
     </div>`;
 }
 
 function showError(message) {
   resultEl.innerHTML = `
-    <div class="card p-6 border-l-4" style="border-left-color:#dc2626">
-      <div class="flex items-center gap-3 mb-2">
-        <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-2xl">✕</div>
-        <h3 class="text-lg font-semibold text-red-700">Access denied</h3>
+    <div class="result-card error">
+      <h3>Action Failed</h3>
+      <p>${message}</p>
+      <div class="scanner-actions">
+        <button class="secondary-btn" type="button" onclick="window.scanReset()">Try Again</button>
       </div>
-      <p class="text-sm text-slate-700">${message}</p>
-      <button class="btn-primary mt-5" onclick="reset()">Try again</button>
     </div>`;
 }
 
-window.reset = function () {
+window.scanReset = function () {
   resultEl.innerHTML = "";
   manualEl.value = "";
 };
 
+async function handleScanned(text) {
+  if (!scanning) return;
+  scanning = false;
+  await stopCamera();
+
+  try {
+    const response = await routePayload(text);
+    showSuccess(response);
+  } catch (err) {
+    showError(err.message || "Unexpected scan error.");
+  }
+}
+
 async function startCamera() {
-  if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
+  if (!html5QrCode) {
+    html5QrCode = new Html5Qrcode("reader");
+  }
 
   try {
     scanning = true;
@@ -79,27 +165,41 @@ async function startCamera() {
       { facingMode: "environment" },
       { fps: 10, qrbox: { width: 240, height: 240 } },
       handleScanned,
-      () => {} // ignore frame-level decode errors
+      () => {}
     );
     startBtn.classList.add("hidden");
     stopBtn.classList.remove("hidden");
   } catch (err) {
     scanning = false;
-    showError("Could not access camera: " + err);
+    showError("Camera could not be started: " + err);
   }
 }
 
 async function stopCamera() {
   if (html5QrCode && html5QrCode.isScanning) {
-    try { await html5QrCode.stop(); } catch (_) {}
+    try {
+      await html5QrCode.stop();
+    } catch {
+      // no-op
+    }
   }
   startBtn.classList.remove("hidden");
   stopBtn.classList.add("hidden");
 }
 
 startBtn.addEventListener("click", startCamera);
-stopBtn .addEventListener("click", stopCamera);
-manualBtn.addEventListener("click", () => {
-  const v = manualEl.value.trim();
-  if (v) routePayload(v);
+stopBtn.addEventListener("click", stopCamera);
+manualBtn.addEventListener("click", async () => {
+  const raw = manualEl.value.trim();
+  if (!raw) {
+    showError("Please provide a QR value for manual action.");
+    return;
+  }
+
+  try {
+    const response = await routePayload(raw);
+    showSuccess(response);
+  } catch (err) {
+    showError(err.message || "Manual action failed.");
+  }
 });

@@ -2,41 +2,54 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>RoomLink — Scan QR</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RoomLink | Scan QR</title>
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
+  <div class="page-bg"></div>
   <div id="nav-slot"></div>
 
-  <main class="max-w-3xl mx-auto px-4 py-8">
-    <header class="mb-6">
-      <h1 class="text-2xl md:text-3xl font-bold text-slate-900">Scan QR code</h1>
-      <p class="text-slate-500 text-sm">
-        Point your camera at the door sticker (room QR) or a student's reservation QR.
-      </p>
-    </header>
+  <main class="main-content">
+    <section class="scanner-layout">
+      <article class="scanner-card scanner-header reveal">
+        <p class="section-label">QR Scanner</p>
+        <h2>Scan Room or Reservation QR</h2>
+        <p>
+          Choose an action and scan a room sticker QR or a reservation QR payload.
+          This screen is aligned with backend QR endpoints.
+        </p>
+      </article>
 
-    <div class="card p-5">
-      <div id="reader" class="rounded-xl overflow-hidden"></div>
-      <div class="flex flex-wrap gap-2 mt-4">
-        <button id="start-btn"  class="btn-primary">Start camera</button>
-        <button id="stop-btn"   class="btn-secondary hidden">Stop</button>
+      <article class="scanner-card reveal delay-1">
+        <div id="reader"></div>
 
-        <div class="ml-auto flex items-center gap-2">
-          <span class="text-xs text-slate-500">Or test manually:</span>
-          <input id="manual" type="text" placeholder="ROOM-1-LAB101" class="!w-56">
-          <button id="manual-btn" class="btn-secondary">Validate</button>
+        <div class="scan-controls">
+          <div class="form-group">
+            <label for="scanMode">Scan Action</label>
+            <select id="scanMode">
+              <option value="validate">Validate Access</option>
+              <option value="checkin">Check In</option>
+              <option value="checkout">Check Out</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="manual">Manual QR Input</label>
+            <input id="manual" type="text" placeholder="ROOM-1-LAB101 or reservation JSON" />
+          </div>
         </div>
-      </div>
-    </div>
 
-    <div id="result" class="mt-6"></div>
+        <div class="scanner-actions">
+          <button id="start-btn" class="primary-btn" type="button">Start Camera</button>
+          <button id="stop-btn" class="secondary-btn hidden" type="button">Stop Camera</button>
+          <button id="manual-btn" class="secondary-btn" type="button">Run Manual Action</button>
+        </div>
+      </article>
+
+      <article id="result" class="reveal delay-2"></article>
+    </section>
   </main>
 
   <script>window.RRS_API_BASE = "https://university-qr-reservation-system-production.up.railway.app";</script>

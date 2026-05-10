@@ -1,62 +1,52 @@
-// Renders the shared top navigation. Each page calls Nav.render() in its <body>.
+// Shared top navigation for utility pages (scan / print).
 window.Nav = {
   render(activeKey) {
-    const role     = Auth.role();
-    const email    = Auth.email() || "user@university.com";
+    const role = Auth.role() || "";
+    const email = Auth.email() || "user@university.com";
     const initials = (email || "U").substring(0, 2).toUpperCase();
 
-    // Nav links target the canonical Set-B pages; scan.html and print-qr.html
-    // are kept as utility pages with no Set-B equivalent.
     const items = [
-      { key: "rooms",           label: "Rooms",       href: "rooms.html" },
-      { key: "my-reservations", label: "My Bookings", href: "my-reservations.html" },
-      { key: "scan",            label: "Scan QR",     href: "scan.html" }
+      { key: "rooms", label: "Rooms", href: "rooms.html" },
+      { key: "my-reservations", label: "My Reservations", href: "my-reservations.html" },
+      { key: "scan", label: "Scan QR", href: "scan.html" }
     ];
-    if (role === "Admin") items.push({ key: "admin", label: "Admin", href: "admin-dashboard.html" });
+
+    if (role === "Admin" || role === "Staff") {
+      items.push({ key: "admin", label: "Dashboard", href: "admin-dashboard.html" });
+    }
+
+    const linkHtml = items
+      .map((it) => {
+        const isActive = activeKey === it.key;
+        return `<a href="${it.href}" class="topnav-link${isActive ? " active" : ""}">${it.label}</a>`;
+      })
+      .join("");
 
     const navHtml = `
       <nav class="topnav">
-        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <a href="rooms.html" class="flex items-center gap-2">
-            <span class="brand-mark text-base font-bold">R</span>
-            <span class="text-base font-semibold text-slate-900">RoomLink</span>
+        <div class="topnav-inner">
+          <a href="rooms.html" class="topnav-brand">
+            <span class="topnav-mark">R</span>
+            <span>
+              <span class="topnav-title">RoomLink</span>
+              <span class="topnav-subtitle">QR Reservation</span>
+            </span>
           </a>
 
-          <div class="hidden md:flex items-center gap-1">
-            ${items.map(it => `
-              <a href="${it.href}"
-                 class="px-3 py-2 rounded-lg text-sm font-medium transition-colors
-                        ${activeKey === it.key
-                          ? 'bg-indigo-50 text-indigo-700'
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'}">
-                ${it.label}
-              </a>`).join("")}
-          </div>
+          <div class="topnav-links">${linkHtml}</div>
 
-          <div class="flex items-center gap-3">
-            <div class="text-right hidden sm:block">
-              <div class="text-xs text-slate-500">${role || ""}</div>
-              <div class="text-sm font-medium text-slate-900 truncate max-w-[180px]">${email}</div>
+          <div class="topnav-right">
+            <div class="topnav-user">
+              <span class="topnav-role">${role}</span>
+              <span class="topnav-email" title="${email}">${email}</span>
             </div>
-            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-700 text-white flex items-center justify-center text-sm font-semibold">
-              ${initials}
-            </div>
-            <button onclick="Auth.logout()" class="btn-secondary text-sm" title="Sign out">Logout</button>
+            <span class="topnav-avatar">${initials}</span>
+            <button type="button" class="secondary-btn" onclick="Auth.logout()">Logout</button>
           </div>
         </div>
 
-        <!-- Mobile nav -->
-        <div class="md:hidden border-t border-slate-100">
-          <div class="max-w-6xl mx-auto px-4 py-2 flex gap-1 overflow-x-auto">
-            ${items.map(it => `
-              <a href="${it.href}"
-                 class="px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap
-                        ${activeKey === it.key
-                          ? 'bg-indigo-50 text-indigo-700'
-                          : 'text-slate-600'}">
-                ${it.label}
-              </a>`).join("")}
-          </div>
+        <div class="topnav-mobile">
+          <div class="topnav-links">${linkHtml}</div>
         </div>
       </nav>`;
 
@@ -64,11 +54,15 @@ window.Nav = {
   }
 };
 
-// Toast helper
 window.toast = function (message, kind) {
-  const el = document.createElement("div");
-  el.className = "toast " + (kind || "");
-  el.textContent = message;
-  document.body.appendChild(el);
-  setTimeout(() => el.remove(), 3500);
+  const host = document.createElement("div");
+  host.className = "message-box " + (kind || "warning");
+  host.style.position = "fixed";
+  host.style.right = "16px";
+  host.style.bottom = "16px";
+  host.style.maxWidth = "360px";
+  host.style.zIndex = "999";
+  host.innerHTML = `<div class="message-icon">!</div><div class="message-content"><h4>Notice</h4><p>${message}</p></div>`;
+  document.body.appendChild(host);
+  setTimeout(() => host.remove(), 3500);
 };

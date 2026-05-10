@@ -40,6 +40,16 @@ const manageRoomsPanel = document.getElementById("manageRoomsPanel");
 const dashboardRoleLabel = document.getElementById("dashboardRoleLabel");
 const dashboardTitle = document.getElementById("dashboardTitle");
 const dashboardSubtitle = document.getElementById("dashboardSubtitle");
+const registerUsersPanel = document.getElementById("registerUsersPanel");
+
+const registerUserForm = document.getElementById("registerUserForm");
+const regFirstName = document.getElementById("regFirstName");
+const regLastName = document.getElementById("regLastName");
+const regEmail = document.getElementById("regEmail");
+const regPassword = document.getElementById("regPassword");
+const regRole = document.getElementById("regRole");
+const regStudentNumber = document.getElementById("regStudentNumber");
+const registerUserBtn = document.getElementById("registerUserBtn");
 
 const messageBox = document.getElementById("messageBox");
 const messageIcon = document.getElementById("messageIcon");
@@ -55,6 +65,10 @@ function getToken() {
 
 function getRole() {
     return localStorage.getItem("role");
+}
+
+function getStoredUserId() {
+    return localStorage.getItem("userID");
 }
 
 function isAdmin() {
@@ -75,7 +89,7 @@ function showMessage(type, title, text) {
 
     messageTitle.textContent = title;
     messageText.textContent = text;
-    messageIcon.textContent = type === "success" ? "✓" : type === "warning" ? "!" : "×";
+    messageIcon.textContent = type === "success" ? "OK" : type === "warning" ? "!" : "X";
 
     messageBox.scrollIntoView({ behavior: "smooth", block: "center" });
 }
@@ -96,6 +110,10 @@ function setupRoleView() {
             manageRoomsPanel.classList.remove("hidden");
         }
 
+        if (registerUsersPanel) {
+            registerUsersPanel.classList.remove("hidden");
+        }
+
         return;
     }
 
@@ -103,10 +121,14 @@ function setupRoleView() {
         dashboardRoleLabel.textContent = "Staff Dashboard";
         dashboardTitle.textContent = "Staff Dashboard";
         dashboardSubtitle.textContent =
-            "Monitor rooms and active reservations. Staff can cancel reservations but cannot add, update, or delete rooms.";
+            "Monitor rooms and your own active reservations. Staff can cancel only their own reservations and cannot edit rooms.";
 
         if (manageRoomsPanel) {
             manageRoomsPanel.classList.add("hidden");
+        }
+
+        if (registerUsersPanel) {
+            registerUsersPanel.classList.add("hidden");
         }
     }
 }
@@ -226,19 +248,19 @@ function normalizeReservation(reservation) {
             reservation.ReservationID ??
             reservation.id ??
             reservation.ID ??
-            "—",
+            "-",
 
         userID:
             reservation.userID ??
             reservation.UserID ??
-            "—",
+            "-",
 
         roomID:
             reservation.roomID ??
             reservation.RoomID ??
             room.roomID ??
             room.RoomID ??
-            "—",
+            "-",
 
         reservationDate:
             reservation.reservationDate ??
@@ -272,7 +294,7 @@ function normalizeReservation(reservation) {
         userEmail:
             user.email ??
             user.Email ??
-            "—",
+            "-",
 
         roomName:
             room.roomName ??
@@ -373,7 +395,7 @@ function populateRoomForm(room) {
 }
 
 function formatDate(value) {
-    if (!value) return "—";
+    if (!value) return "-";
 
     const date = new Date(value);
 
@@ -385,7 +407,7 @@ function formatDate(value) {
 }
 
 function formatTimeOnly(value) {
-    if (!value) return "—";
+    if (!value) return "-";
 
     const date = new Date(value);
 
@@ -692,11 +714,75 @@ function setLoadReservationsLoading(isLoading) {
 }
 
 async function loadAllReservations() {
-    const data = await apiRequest(`${RESERVATION_API_BASE_URL}/all`, {
-        method: "GET"
-    });
+    let endpoint = `${RESERVATION_API_BASE_URL}/all`;
+
+    if (!isAdmin()) {
+        const userId = getStoredUserId();
+        if (!userId) {
+            throw new Error("User ID is missing. Please sign in again.");
+        }
+        endpoint = `${RESERVATION_API_BASE_URL}/user/${encodeURIComponent(userId)}`;
+    }
+
+    const data = await apiRequest(endpoint, { method: "GET" });
 
     return extractArray(data, ["reservations", "Reservations", "data", "Data"]).map(normalizeReservation);
+}
+
+function clearRegisterUserForm() {
+    if (!registerUserForm) return;
+    registerUserForm.reset();
+    if (regRole) regRole.value = "Student";
+}
+
+function validateRegisterUserForm() {
+    const firstName = (regFirstName?.value || "").trim();
+    const lastName = (regLastName?.value || "").trim();
+    const email = (regEmail?.value || "").trim();
+    const password = (regPassword?.value || "").trim();
+    const role = (regRole?.value || "").trim();
+
+    if (!firstName || !lastName || !email || !password || !role) {
+        throw new Error("First name, last name, email, password, and role are required.");
+    }
+}
+
+function buildRegisterPayload() {
+    return {
+        firstName: (regFirstName?.value || "").trim(),
+        lastName: (regLastName?.value || "").trim(),
+        email: (regEmail?.value || "").trim(),
+        password: (regPassword?.value || "").trim(),
+        role: (regRole?.value || "").trim(),
+        studentNumber: (regStudentNumber?.value || "").trim() || null
+    };
+}
+
+async function registerUser() {
+    if (!isAdmin()) {
+        showMessage("error", "Access Denied", "Only admins can register new users.");
+        return;
+    }
+
+    try {
+        validateRegisterUserForm();
+        hideMessage();
+
+        const payload = buildRegisterPayload();
+        const data = await apiRequest(`${__RRS_BASE}/api/auth/register`, {
+            method: "POST",
+            body: JSON.stringify(payload)
+        });
+
+        showMessage(
+            "success",
+            "User Registered",
+            `User created successfully. User ID: ${data.userID || data.UserID || "N/A"}`
+        );
+        clearRegisterUserForm();
+    } catch (error) {
+        showMessage("error", "Register Failed", error.message || "Unable to register user.");
+    }
 }
 
 async function refreshAllReservations(showSuccess = false) {
@@ -759,6 +845,10 @@ if (deleteRoomBtn) {
     deleteRoomBtn.addEventListener("click", deleteRoom);
 }
 
+if (registerUserBtn) {
+    registerUserBtn.addEventListener("click", registerUser);
+}
+
 loadReservationsBtn.addEventListener("click", async () => {
     await refreshAllReservations(true);
 });
@@ -772,6 +862,10 @@ if (logoutBtn) {
         localStorage.removeItem("token");
         localStorage.removeItem("userID");
         localStorage.removeItem("role");
+        localStorage.removeItem("rrs.token");
+        localStorage.removeItem("rrs.role");
+        localStorage.removeItem("rrs.userId");
+        localStorage.removeItem("rrs.email");
         window.location.href = "login.html";
     });
 }
@@ -792,3 +886,5 @@ window.addEventListener("load", async () => {
     await loadAllRooms();
     await refreshAllReservations(false);
 });
+
+

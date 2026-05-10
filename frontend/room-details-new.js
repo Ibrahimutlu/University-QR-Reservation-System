@@ -50,6 +50,10 @@ function getRole() {
     return (localStorage.getItem("role") || "").trim().toLowerCase();
 }
 
+if (!getToken()) {
+    window.location.href = "login.html";
+}
+
 function getRoomIdFromUrl() {
     const params = new URLSearchParams(window.location.search);
     return params.get("roomId");
@@ -77,7 +81,7 @@ function showMessage(type, title, text) {
 
     messageTitle.textContent = title;
     messageText.textContent = text;
-    messageIcon.textContent = type === "success" ? "✓" : type === "warning" ? "!" : "×";
+    messageIcon.textContent = type === "success" ? "OK" : type === "warning" ? "!" : "X";
 }
 
 function hideMessage() {
@@ -88,7 +92,7 @@ function hideMessage() {
 }
 
 function formatDateTime(value) {
-    if (!value) return "—";
+    if (!value) return "-";
 
     const date = new Date(value);
 
@@ -225,7 +229,7 @@ function setQRNotAvailable(message = "QR could not be loaded.") {
     }
 
     if (qrExpiry) {
-        qrExpiry.textContent = "—";
+        qrExpiry.textContent = "-";
     }
 
     if (qrMessage) {
@@ -254,9 +258,26 @@ async function generateRoomQr(roomId, roomName) {
         let msg = "Failed to generate QR.";
         if (response.status === 403) msg = "Only staff/admin can view this QR.";
         if (response.status === 404) msg = "Room QR not found.";
-        throw new Error(msg);
+        const error = new Error(msg);
+        error.status = response.status;
+        throw error;
     }
     return await response.json();
+}
+
+async function createRoomQr(roomId) {
+    const base = (typeof window !== "undefined" && window.RRS_API_BASE
+        ? window.RRS_API_BASE
+        : "http://localhost:5000");
+    const token = localStorage.getItem("token");
+    const response = await fetch(base + "/api/qr/create/" + roomId, {
+        method: "POST",
+        headers: token ? { Authorization: "Bearer " + token } : {}
+    });
+
+    if (!response.ok) {
+        throw new Error("QR could not be created.");
+    }
 }
 
 async function loadRoomQr(roomId, roomName) {
@@ -302,14 +323,25 @@ async function loadRoomQr(roomId, roomName) {
 
         if (viewQrBtn) {
             viewQrBtn.disabled = false;
-            viewQrBtn.textContent = "Open Room Link";
+            viewQrBtn.textContent = "Open Printable QR";
             viewQrBtn.onclick = () => {
-                window.open(qrData.targetUrl, "_blank");
+                const qrLink = `print-qr.html?room=${encodeURIComponent(roomId)}`;
+                window.location.href = qrLink;
             };
         }
     } catch (error) {
+        if (getRole() === "admin" && error?.status === 404) {
+            try {
+                await createRoomQr(roomId);
+                await loadRoomQr(roomId, roomName);
+                return;
+            } catch (createErr) {
+                console.error("QR create failed:", createErr);
+            }
+        }
+
         console.error("QR load failed:", error);
-        setQRNotAvailable("QR service is not available.");
+        setQRNotAvailable(error?.message || "QR service is not available.");
     }
 }
 
@@ -412,9 +444,15 @@ if (logoutBtn) {
         localStorage.removeItem("token");
         localStorage.removeItem("userID");
         localStorage.removeItem("role");
+        localStorage.removeItem("rrs.token");
+        localStorage.removeItem("rrs.role");
+        localStorage.removeItem("rrs.userId");
+        localStorage.removeItem("rrs.email");
         window.location.href = "login.html";
     });
 }
 
 setupDashboardLink();
 initializePage();
+
+

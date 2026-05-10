@@ -111,6 +111,57 @@
             </form>
           </div>
 
+          <div class="panel reveal delay-1 full-panel" id="registerUsersPanel">
+            <div class="panel-header">
+              <div>
+                <p class="section-label">Users</p>
+                <h3>Register User (Admin)</h3>
+              </div>
+            </div>
+
+            <form id="registerUserForm" novalidate>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="regFirstName">First Name</label>
+                  <input type="text" id="regFirstName" placeholder="Enter first name" />
+                </div>
+
+                <div class="form-group">
+                  <label for="regLastName">Last Name</label>
+                  <input type="text" id="regLastName" placeholder="Enter last name" />
+                </div>
+
+                <div class="form-group">
+                  <label for="regEmail">Email</label>
+                  <input type="email" id="regEmail" placeholder="name@university.com" />
+                </div>
+
+                <div class="form-group">
+                  <label for="regPassword">Password</label>
+                  <input type="password" id="regPassword" placeholder="Temporary password" />
+                </div>
+
+                <div class="form-group">
+                  <label for="regRole">Role</label>
+                  <select id="regRole">
+                    <option value="Student">Student</option>
+                    <option value="Staff">Staff</option>
+                    <option value="Admin">Admin</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="regStudentNumber">Student Number (optional)</label>
+                  <input type="text" id="regStudentNumber" placeholder="20210001" />
+                </div>
+              </div>
+
+              <div class="form-actions">
+                <button type="button" id="registerUserBtn" class="primary-btn">Register User</button>
+              </div>
+            </form>
+          </div>
+
           <div class="panel reveal delay-2 full-panel">
             <div class="panel-header">
               <div>

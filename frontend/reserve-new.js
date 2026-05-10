@@ -57,6 +57,10 @@ function getRole() {
     return (localStorage.getItem("role") || "").trim().toLowerCase();
 }
 
+if (!getToken()) {
+    window.location.href = "login.html";
+}
+
 function setupDashboardLink() {
     const role = getRole();
 
@@ -69,6 +73,36 @@ function setupDashboardLink() {
     } else {
         adminNavLink.classList.add("hidden");
     }
+}
+
+async function syncWarnings() {
+    const token = getToken();
+    if (!token) return [];
+
+    const response = await fetch(`${API_BASE_URL}/warnings`, {
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+
+    const contentType = response.headers.get("content-type") || "";
+    let data = [];
+
+    if (contentType.includes("application/json")) {
+        data = await response.json();
+    } else {
+        await response.text();
+    }
+
+    if (!response.ok) {
+        const errorMessage =
+            typeof data === "string"
+                ? data
+                : data?.message || "Reservation warning sync failed.";
+        throw new Error(errorMessage);
+    }
+
+    return Array.isArray(data) ? data : [];
 }
 
 function clearErrors() {
@@ -87,7 +121,7 @@ function showMessage(type, title, text) {
     messageBox.classList.remove("hidden", "success", "error");
     messageBox.classList.add(type);
 
-    messageIcon.textContent = type === "success" ? "✓" : "!";
+    messageIcon.textContent = type === "success" ? "OK" : "!";
     messageTitle.textContent = title;
     messageText.textContent = text;
 
@@ -116,15 +150,15 @@ function setLoading(isLoading) {
 }
 
 function formatDate(dateValue) {
-    return dateValue || "—";
+    return dateValue || "-";
 }
 
 function formatSimpleTime(timeValue) {
-    return timeValue || "—";
+    return timeValue || "-";
 }
 
 function formatSlotLabel(startTime, endTime) {
-    return `${formatSimpleTime(startTime)} → ${formatSimpleTime(endTime)}`;
+    return `${formatSimpleTime(startTime)} -> ${formatSimpleTime(endTime)}`;
 }
 
 function formatRemainingCapacity(slot) {
@@ -141,15 +175,15 @@ function formatRemainingCapacity(slot) {
 }
 
 function updatePreview() {
-    preview.roomId.textContent = fields.roomId.value || "—";
+    preview.roomId.textContent = fields.roomId.value || "-";
     preview.date.textContent = formatDate(fields.reservationDate.value);
-    preview.startTime.textContent = selectedSlot ? selectedSlot.startTime : "—";
-    preview.endTime.textContent = selectedSlot ? selectedSlot.endTime : "—";
+    preview.startTime.textContent = selectedSlot ? selectedSlot.startTime : "-";
+    preview.endTime.textContent = selectedSlot ? selectedSlot.endTime : "-";
 
     if (preview.remainingCapacity) {
         preview.remainingCapacity.textContent = selectedSlot
             ? formatRemainingCapacity(selectedSlot)
-            : "—";
+            : "-";
     }
 }
 
@@ -481,6 +515,7 @@ reservationForm.addEventListener("submit", async (event) => {
 
     try {
         setLoading(true);
+        await syncWarnings();
 
         const payload = buildReservationPayload();
         const result = await submitReservation(payload);
@@ -531,6 +566,10 @@ if (logoutBtn) {
         localStorage.removeItem("token");
         localStorage.removeItem("userID");
         localStorage.removeItem("role");
+        localStorage.removeItem("rrs.token");
+        localStorage.removeItem("rrs.role");
+        localStorage.removeItem("rrs.userId");
+        localStorage.removeItem("rrs.email");
         window.location.href = "login.html";
     });
 }
@@ -539,3 +578,5 @@ setupDashboardLink();
 prefillRoomIdFromUrl();
 updatePreview();
 slotsMessage.textContent = "Choose a reservation date to load time slots.";
+
+

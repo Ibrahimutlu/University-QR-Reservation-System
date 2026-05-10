@@ -16,6 +16,7 @@ const clearBtn = document.getElementById("clearBtn");
 
 const logoutBtn = document.getElementById("logoutBtn");
 const adminNavLink = document.getElementById("adminNavLink");
+const ACTIVE_STATUSES = new Set(["pending", "confirmed", "active", "checkedin"]);
 
 function getStoredUserId() {
     return localStorage.getItem("userID");
@@ -29,6 +30,10 @@ function getRole() {
     return localStorage.getItem("role");
 }
 
+if (!getToken()) {
+    window.location.href = "login.html";
+}
+
 function showMessage(type, title, text) {
     messageBox.classList.remove("hidden", "success", "error", "warning");
     messageBox.classList.add(type);
@@ -37,11 +42,11 @@ function showMessage(type, title, text) {
     messageText.textContent = text;
 
     if (type === "success") {
-        messageIcon.textContent = "✓";
+        messageIcon.textContent = "OK";
     } else if (type === "warning") {
         messageIcon.textContent = "!";
     } else {
-        messageIcon.textContent = "×";
+        messageIcon.textContent = "X";
     }
 }
 
@@ -51,7 +56,7 @@ function hideMessage() {
 }
 
 function formatDate(value) {
-    if (!value) return "—";
+    if (!value) return "-";
 
     const date = new Date(value);
 
@@ -63,7 +68,7 @@ function formatDate(value) {
 }
 
 function formatDateTime(value) {
-    if (!value) return "—";
+    if (!value) return "-";
 
     const date = new Date(value);
 
@@ -87,7 +92,7 @@ function isCancelledStatus(status) {
 function getStatusClass(status) {
     const normalized = normalizeStatus(status).toLowerCase();
 
-    if (normalized === "confirmed") {
+    if (normalized === "confirmed" || normalized === "checkedin" || normalized === "active") {
         return "status-confirmed";
     }
 
@@ -117,14 +122,14 @@ function createReservationCard(reservation) {
         reservation.ReservationID ??
         reservation.id ??
         reservation.ID ??
-        "—";
+        "-";
 
     const roomId =
         reservation.roomID ??
         reservation.RoomID ??
         reservation.room?.roomID ??
         reservation.Room?.RoomID ??
-        "—";
+        "-";
 
     const roomName =
         reservation.room?.roomName ??
@@ -189,9 +194,40 @@ function createReservationCard(reservation) {
 
 function filterActiveReservations(reservations) {
     return reservations.filter((reservation) => {
-        const status = reservation.status ?? reservation.Status;
-        return !isCancelledStatus(status);
+        const normalized = normalizeStatus(reservation.status ?? reservation.Status).toLowerCase();
+        return ACTIVE_STATUSES.has(normalized);
     });
+}
+
+async function syncWarnings() {
+    const token = getToken();
+    if (!token) return [];
+
+    const response = await fetch(`${API_BASE_URL}/warnings`, {
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    });
+
+    const contentType = response.headers.get("content-type") || "";
+    let data = [];
+
+    if (contentType.includes("application/json")) {
+        data = await response.json();
+    } else {
+        const text = await response.text();
+        data = text ? [] : [];
+    }
+
+    if (!response.ok) {
+        const errorMessage =
+            typeof data === "string"
+                ? data
+                : data?.message || "Warning sync failed.";
+        throw new Error(errorMessage);
+    }
+
+    return Array.isArray(data) ? data : [];
 }
 
 function renderReservations(reservations) {
@@ -275,9 +311,19 @@ async function refreshReservations(showSuccessMessage = false) {
 
     try {
         hideMessage();
+        const warnings = await syncWarnings();
 
         const reservations = await loadReservationsForUser(userId);
         renderReservations(reservations);
+
+        if (!showSuccessMessage && warnings.length > 0) {
+            showMessage(
+                "warning",
+                "Reservation Alerts",
+                warnings[0]?.message || "Some reservation statuses were updated."
+            );
+            return;
+        }
 
         if (showSuccessMessage) {
             const activeReservations = filterActiveReservations(reservations);
@@ -388,6 +434,10 @@ if (logoutBtn) {
         localStorage.removeItem("token");
         localStorage.removeItem("userID");
         localStorage.removeItem("role");
+        localStorage.removeItem("rrs.token");
+        localStorage.removeItem("rrs.role");
+        localStorage.removeItem("rrs.userId");
+        localStorage.removeItem("rrs.email");
         window.location.href = "login.html";
     });
 }
@@ -409,3 +459,5 @@ function setupDashboardLink() {
 
 setupDashboardLink();
 refreshReservations(false);
+
+

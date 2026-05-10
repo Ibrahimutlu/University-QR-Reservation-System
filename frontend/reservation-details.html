@@ -68,37 +68,37 @@
                     <div id="detailsContent" class="details-grid hidden">
                         <div class="detail-card">
                             <span>Reservation ID</span>
-                            <strong id="reservationId">—</strong>
+                            <strong id="reservationId">â€”</strong>
                         </div>
 
                         <div class="detail-card">
                             <span>Room</span>
-                            <strong id="roomName">—</strong>
+                            <strong id="roomName">â€”</strong>
                         </div>
 
                         <div class="detail-card">
                             <span>Reservation Date</span>
-                            <strong id="reservationDate">—</strong>
+                            <strong id="reservationDate">â€”</strong>
                         </div>
 
                         <div class="detail-card">
                             <span>Start Time</span>
-                            <strong id="startTime">—</strong>
+                            <strong id="startTime">â€”</strong>
                         </div>
 
                         <div class="detail-card">
                             <span>End Time</span>
-                            <strong id="endTime">—</strong>
+                            <strong id="endTime">â€”</strong>
                         </div>
 
                         <div class="detail-card">
                             <span>Status</span>
-                            <strong id="statusText">—</strong>
+                            <strong id="statusText">â€”</strong>
                         </div>
 
                         <div class="detail-card">
                             <span>Created At</span>
-                            <strong id="createdAt">—</strong>
+                            <strong id="createdAt">â€”</strong>
                         </div>
                     </div>
 
@@ -113,6 +113,36 @@
                     <div class="action-row hidden" id="actionRow">
                         <button id="cancelBtn" class="danger-btn">Cancel Reservation</button>
                     </div>
+
+                    <div class="form-panel hidden" id="reschedulePanel">
+                        <div class="panel-header">
+                            <div>
+                                <p class="section-label">Reschedule</p>
+                                <h3>Update Reservation Time</h3>
+                            </div>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="updateDate">Date</label>
+                                <input type="date" id="updateDate" />
+                            </div>
+
+                            <div class="form-group">
+                                <label for="updateStart">Start</label>
+                                <input type="datetime-local" id="updateStart" />
+                            </div>
+
+                            <div class="form-group">
+                                <label for="updateEnd">End</label>
+                                <input type="datetime-local" id="updateEnd" />
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="button" id="updateBtn" class="primary-btn">Update Reservation</button>
+                        </div>
+                    </div>
                 </div>
 
                 <aside class="summary-panel reveal delay-2">
@@ -126,27 +156,27 @@
                     <div class="summary-card">
                         <div class="summary-row">
                             <span>Reservation ID</span>
-                            <strong id="summaryReservationId">—</strong>
+                            <strong id="summaryReservationId">â€”</strong>
                         </div>
 
                         <div class="summary-row">
                             <span>Room</span>
-                            <strong id="summaryRoomName">—</strong>
+                            <strong id="summaryRoomName">â€”</strong>
                         </div>
 
                         <div class="summary-row">
                             <span>Status</span>
-                            <strong id="summaryStatus">—</strong>
+                            <strong id="summaryStatus">â€”</strong>
                         </div>
 
                         <div class="summary-row">
                             <span>Start</span>
-                            <strong id="summaryStart">—</strong>
+                            <strong id="summaryStart">â€”</strong>
                         </div>
 
                         <div class="summary-row">
                             <span>End</span>
-                            <strong id="summaryEnd">—</strong>
+                            <strong id="summaryEnd">â€”</strong>
                         </div>
                     </div>
 
@@ -182,17 +212,17 @@
 
                                     <div class="qr-info-item">
                                         <span class="qr-info-label">Type</span>
-                                        <strong id="qrExpiry">—</strong>
+                                        <strong id="qrExpiry">â€”</strong>
                                     </div>
 
                                     <div class="qr-info-item">
                                         <span class="qr-info-label">Reservation ID</span>
-                                        <strong id="qrReservationIdText">—</strong>
+                                        <strong id="qrReservationIdText">â€”</strong>
                                     </div>
 
                                     <div class="qr-info-item">
                                         <span class="qr-info-label">Room</span>
-                                        <strong id="qrRoomNameText">—</strong>
+                                        <strong id="qrRoomNameText">â€”</strong>
                                     </div>
                                 </div>
 

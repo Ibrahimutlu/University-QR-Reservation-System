@@ -11,6 +11,11 @@ const messageTitle = document.getElementById("messageTitle");
 const messageText = document.getElementById("messageText");
 const actionRow = document.getElementById("actionRow");
 const cancelBtn = document.getElementById("cancelBtn");
+const reschedulePanel = document.getElementById("reschedulePanel");
+const updateDateInput = document.getElementById("updateDate");
+const updateStartInput = document.getElementById("updateStart");
+const updateEndInput = document.getElementById("updateEnd");
+const updateBtn = document.getElementById("updateBtn");
 const logoutBtn = document.getElementById("logoutBtn");
 const adminNavLink = document.getElementById("adminNavLink");
 
@@ -56,17 +61,35 @@ function getReservationIdFromUrl() {
 }
 
 function formatDate(value) {
-  if (!value) return "—";
+  if (!value) return "-";
   const date = new Date(value);
   if (isNaN(date.getTime())) return value;
   return date.toLocaleDateString();
 }
 
 function formatDateTime(value) {
-  if (!value) return "—";
+  if (!value) return "-";
   const date = new Date(value);
   if (isNaN(date.getTime())) return value;
   return date.toLocaleString();
+}
+
+function pad2(value) {
+  return String(value).padStart(2, "0");
+}
+
+function toDateInputValue(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (isNaN(date.getTime())) return "";
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+}
+
+function toDateTimeLocalValue(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (isNaN(date.getTime())) return "";
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}T${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
 }
 
 function normalizeStatus(status) {
@@ -76,7 +99,9 @@ function normalizeStatus(status) {
 
 function getStatusClass(status) {
   const normalized = normalizeStatus(status).toLowerCase();
-  if (normalized === "confirmed") return "status-confirmed";
+  if (normalized === "confirmed" || normalized === "checkedin" || normalized === "active") {
+    return "status-confirmed";
+  }
   if (normalized === "cancelled" || normalized === "canceled") return "status-cancelled";
   return "status-pending";
 }
@@ -87,9 +112,9 @@ function showMessage(type, title, text) {
   messageTitle.textContent = title;
   messageText.textContent = text;
 
-  if (type === "success") messageIcon.textContent = "✓";
+  if (type === "success") messageIcon.textContent = "OK";
   else if (type === "warning") messageIcon.textContent = "!";
-  else messageIcon.textContent = "✕";
+  else messageIcon.textContent = "X";
 }
 
 function hideMessage() {
@@ -101,6 +126,7 @@ function showLoading() {
   loadingState.classList.remove("hidden");
   detailsContent.classList.add("hidden");
   actionRow.classList.add("hidden");
+  if (reschedulePanel) reschedulePanel.classList.add("hidden");
 }
 
 function hideLoading() {
@@ -159,7 +185,7 @@ function getRoomDisplayName(reservation) {
 
   const roomId = getRoomId(reservation);
   if (roomId !== null && roomId !== undefined) return `Room #${roomId}`;
-  return "—";
+  return "-";
 }
 
 function setQRNotAvailable(message = "QR is currently unavailable.") {
@@ -169,7 +195,7 @@ function setQRNotAvailable(message = "QR is currently unavailable.") {
   qrBox.classList.remove("has-image");
   qrMessage.textContent = message;
   qrStatus.textContent = "Not Available";
-  qrExpiry.textContent = "—";
+  qrExpiry.textContent = "-";
   viewQrBtn.textContent = "QR Not Ready";
   viewQrBtn.disabled = true;
   viewQrBtn.onclick = null;
@@ -221,9 +247,9 @@ async function loadExternalRoomQr(reservation) {
     qrExpiry.textContent = "Dynamic QR";
     qrMessage.textContent = "Generated for this reservation.";
     viewQrBtn.disabled = false;
-    viewQrBtn.textContent = "Open Link";
+    viewQrBtn.textContent = "Open Printable QR";
     viewQrBtn.onclick = () => {
-      window.open(qrData.targetUrl, "_blank");
+      window.location.href = `print-qr.html?room=${encodeURIComponent(roomId)}`;
     };
   } catch (error) {
     console.error("External QR load failed:", error);
@@ -232,7 +258,7 @@ async function loadExternalRoomQr(reservation) {
 }
 
 function populateDetails(reservation) {
-  const reservationId = getReservationNumericId(reservation) ?? "—";
+  const reservationId = getReservationNumericId(reservation) ?? "-";
   const roomDisplay = getRoomDisplayName(reservation);
 
   const date = reservation.reservationDate ?? reservation.ReservationDate ?? "";
@@ -271,8 +297,22 @@ function populateDetails(reservation) {
 
   if (isCancelled) {
     actionRow.classList.add("hidden");
+    if (reschedulePanel) reschedulePanel.classList.add("hidden");
   } else {
     actionRow.classList.remove("hidden");
+    if (reschedulePanel) reschedulePanel.classList.remove("hidden");
+  }
+
+  if (updateDateInput) {
+    updateDateInput.value = toDateInputValue(start || date);
+  }
+
+  if (updateStartInput) {
+    updateStartInput.value = toDateTimeLocalValue(start);
+  }
+
+  if (updateEndInput) {
+    updateEndInput.value = toDateTimeLocalValue(end);
   }
 
   detailsContent.classList.remove("hidden");
@@ -343,7 +383,7 @@ async function fetchReservationDetails() {
     throw new Error("No reservation ID was provided in the URL.");
   }
 
-  if (["admin", "staff"].includes(String(role || "").trim().toLowerCase())) {
+  if (String(role || "").trim().toLowerCase() === "admin") {
     return await fetchReservationForAdmin(reservationId);
   }
 
@@ -405,8 +445,56 @@ async function cancelReservation() {
   }
 }
 
+function buildUpdatePayload() {
+  const reservationDate = (updateDateInput?.value || "").trim();
+  const startTime = (updateStartInput?.value || "").trim();
+  const endTime = (updateEndInput?.value || "").trim();
+
+  if (!reservationDate || !startTime || !endTime) {
+    throw new Error("Date, start time, and end time are required for update.");
+  }
+
+  const start = new Date(startTime);
+  const end = new Date(endTime);
+  if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) {
+    throw new Error("End time must be later than start time.");
+  }
+
+  return {
+    reservationDate: `${reservationDate}T00:00:00`,
+    startTime,
+    endTime
+  };
+}
+
+async function updateReservation() {
+  const reservationId = getReservationIdFromUrl();
+  if (!reservationId || !getToken()) return;
+
+  const confirmed = window.confirm("Do you want to update this reservation?");
+  if (!confirmed) return;
+
+  try {
+    hideMessage();
+    const payload = buildUpdatePayload();
+    await apiRequest(`${API_BASE_URL}/reservation/update/${reservationId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    showMessage("success", "Reservation Updated", "Reservation time was updated successfully.");
+    await loadReservationDetails();
+  } catch (error) {
+    showMessage("error", "Update Failed", error.message || "Unable to update reservation.");
+  }
+}
+
 if (cancelBtn) {
   cancelBtn.addEventListener("click", cancelReservation);
+}
+
+if (updateBtn) {
+  updateBtn.addEventListener("click", updateReservation);
 }
 
 if (logoutBtn) {
@@ -414,6 +502,10 @@ if (logoutBtn) {
     localStorage.removeItem("token");
     localStorage.removeItem("userID");
     localStorage.removeItem("role");
+    localStorage.removeItem("rrs.token");
+    localStorage.removeItem("rrs.role");
+    localStorage.removeItem("rrs.userId");
+    localStorage.removeItem("rrs.email");
     window.location.href = "login.html";
   });
 }
@@ -435,3 +527,5 @@ function setupDashboardLink() {
 
 setupDashboardLink();
 loadReservationDetails();
+
+

@@ -39,6 +39,10 @@ function setupDashboardLink() {
     }
 }
 
+if (!getToken()) {
+    window.location.href = "login.html";
+}
+
 function normalizeRoom(room) {
     const capacity = room.capacity ?? room.Capacity ?? 0;
 
@@ -95,6 +99,19 @@ async function fetchRooms() {
 
     const roomsArray = extractRoomsArray(data);
     return roomsArray.map(normalizeRoom);
+}
+
+async function syncReservationWarnings() {
+    const baseUrl = API_BASE_URL.replace("/api/room", "/api/reservation/warnings");
+    try {
+        const data = await apiRequest(baseUrl);
+        if (Array.isArray(data) && data.length) {
+            console.log("Reservation warnings synced:", data);
+        }
+    } catch (error) {
+        // Warnings are non-blocking for this page.
+        console.warn("Warning sync failed:", error.message || error);
+    }
 }
 
 function updateStats(data) {
@@ -211,6 +228,7 @@ async function loadRooms() {
         roomsContainer.innerHTML = "";
         emptyState.classList.add("hidden");
 
+        await syncReservationWarnings();
         rooms = await fetchRooms();
 
         console.log("Normalized rooms:", rooms);
@@ -243,9 +261,14 @@ if (logoutBtn) {
         localStorage.removeItem("token");
         localStorage.removeItem("userID");
         localStorage.removeItem("role");
+        localStorage.removeItem("rrs.token");
+        localStorage.removeItem("rrs.role");
+        localStorage.removeItem("rrs.userId");
+        localStorage.removeItem("rrs.email");
         window.location.href = "login.html";
     });
 }
 
 setupDashboardLink();
 loadRooms();
+

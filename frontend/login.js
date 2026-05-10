@@ -25,7 +25,7 @@ function showMessage(type, title, text) {
     messageBox.classList.add(type);
 
     if (type === "success") {
-        messageIcon.textContent = "✓";
+        messageIcon.textContent = "OK";
     } else {
         messageIcon.textContent = "!";
     }
@@ -106,6 +106,16 @@ async function login(email, password) {
 }
 
 function saveSession(result) {
+    if (window.Auth && typeof window.Auth.save === "function") {
+        window.Auth.save({
+            token: result.token || "",
+            role: result.role || "",
+            userID: result.userID || "",
+            email: emailInput.value.trim()
+        });
+        return;
+    }
+
     localStorage.setItem("token", result.token || "");
     localStorage.setItem("role", result.role || "");
     localStorage.setItem("userID", String(result.userID || ""));

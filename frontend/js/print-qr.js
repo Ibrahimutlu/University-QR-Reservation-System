@@ -38,7 +38,7 @@ async function load() {
     loading.classList.add("hidden");
     card.classList.remove("hidden");
 
-    document.title = "RoomLink — " + data.roomName + " QR";
+    document.title = "RoomLink - " + data.roomName + " QR";
   } catch (err) {
     showError(err.message);
   }
