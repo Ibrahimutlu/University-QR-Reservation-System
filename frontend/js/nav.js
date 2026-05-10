@@ -5,17 +5,19 @@ window.Nav = {
     const email    = Auth.email() || "user@university.com";
     const initials = (email || "U").substring(0, 2).toUpperCase();
 
+    // Nav links target the canonical Set-B pages; scan.html and print-qr.html
+    // are kept as utility pages with no Set-B equivalent.
     const items = [
-      { key: "dashboard",    label: "Rooms",        href: "dashboard.html" },
-      { key: "reservations", label: "My Bookings",  href: "reservations.html" },
-      { key: "scan",         label: "Scan QR",      href: "scan.html" }
+      { key: "rooms",           label: "Rooms",       href: "rooms.html" },
+      { key: "my-reservations", label: "My Bookings", href: "my-reservations.html" },
+      { key: "scan",            label: "Scan QR",     href: "scan.html" }
     ];
-    if (role === "Admin") items.push({ key: "admin", label: "Admin", href: "admin.html" });
+    if (role === "Admin") items.push({ key: "admin", label: "Admin", href: "admin-dashboard.html" });
 
     const navHtml = `
       <nav class="topnav">
         <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <a href="dashboard.html" class="flex items-center gap-2">
+          <a href="rooms.html" class="flex items-center gap-2">
             <span class="brand-mark text-base font-bold">R</span>
             <span class="text-base font-semibold text-slate-900">RoomLink</span>
           </a>

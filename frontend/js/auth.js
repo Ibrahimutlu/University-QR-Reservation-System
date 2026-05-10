@@ -30,7 +30,7 @@
     },
     requireRole(role) {
       this.requireAuth();
-      if (this.role() !== role) window.location.href = "dashboard.html";
+      if (this.role() !== role) window.location.href = "rooms.html";
     }
   };
 })();
