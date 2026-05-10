@@ -233,7 +233,7 @@ function normalizeRoom(room) {
         roomName: room.roomName ?? room.RoomName ?? room.name ?? room.Name ?? "Unknown Room",
         roomType: room.roomType ?? room.RoomType ?? room.type ?? room.Type ?? "Unknown Type",
         capacity: room.capacity ?? room.Capacity ?? 0,
-        location: room.location ?? room.Location ?? room.building ?? room.Building ?? "Unknown Location",
+        location: room.location ?? room.Location ?? "Unknown Location",
         isAvailable: room.isAvailable ?? room.IsAvailable ?? true
     };
 }

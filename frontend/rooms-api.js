@@ -45,14 +45,16 @@ if (!getToken()) {
 
 function normalizeRoom(room) {
     const capacity = room.capacity ?? room.Capacity ?? 0;
+    const isAvailable = room.isAvailable ?? room.IsAvailable ?? true;
 
     return {
         id: room.roomID ?? room.RoomID ?? room.id ?? room.ID,
         name: room.roomName ?? room.RoomName ?? room.name ?? room.Name ?? "Unknown Room",
         type: room.roomType ?? room.RoomType ?? room.type ?? room.Type ?? "Unknown Type",
         capacity,
-        location: room.location ?? room.Location ?? room.building ?? room.Building ?? "Unknown Location",
-        status: "Check Slots"
+        location: room.location ?? room.Location ?? "Unknown Location",
+        isAvailable,
+        status: isAvailable ? "Available" : "Unavailable"
     };
 }
 
@@ -120,8 +122,47 @@ function updateStats(data) {
     }
 
     if (availableRoomsElement) {
-        availableRoomsElement.textContent = data.length;
+        availableRoomsElement.textContent = data.filter((room) => room.isAvailable).length;
     }
+}
+
+function populateSelect(select, values, defaultLabel) {
+    if (!select) return;
+
+    const currentValue = select.value;
+    select.innerHTML = "";
+
+    const defaultOption = document.createElement("option");
+    defaultOption.value = "";
+    defaultOption.textContent = defaultLabel;
+    select.appendChild(defaultOption);
+
+    values.forEach((value) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = value;
+        select.appendChild(option);
+    });
+
+    const hasCurrent = values.includes(currentValue);
+    select.value = hasCurrent ? currentValue : "";
+}
+
+function populateDynamicFilters(data) {
+    const roomTypes = [...new Set(
+        data
+            .map((room) => String(room.type || "").trim())
+            .filter(Boolean)
+    )].sort((a, b) => a.localeCompare(b));
+
+    const locations = [...new Set(
+        data
+            .map((room) => String(room.location || "").trim())
+            .filter(Boolean)
+    )].sort((a, b) => a.localeCompare(b));
+
+    populateSelect(roomTypeSelect, roomTypes, "All Types");
+    populateSelect(locationSelect, locations, "All Locations");
 }
 
 function createRoomCard(room) {
@@ -205,8 +246,7 @@ function filterRooms() {
 
         const matchesAvailability =
             !availabilityValue ||
-            availabilityValue === "Available" ||
-            availabilityValue === "Check Slots";
+            (availabilityValue === "Available" && room.isAvailable);
 
         const capacityMatch = matchesCapacity(Number(room.capacity), capacityValue);
 
@@ -230,6 +270,7 @@ async function loadRooms() {
 
         await syncReservationWarnings();
         rooms = await fetchRooms();
+        populateDynamicFilters(rooms);
 
         console.log("Normalized rooms:", rooms);
 
