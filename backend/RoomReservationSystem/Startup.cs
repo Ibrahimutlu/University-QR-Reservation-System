@@ -214,11 +214,6 @@ namespace RoomReservationSystem
             if (forceHttps)
                 app.UseHttpsRedirection();
 
-            // Serve the frontend from wwwroot (same-origin as the API).
-            // Order matters: static files first, then routing/CORS/auth.
-            app.UseDefaultFiles();   // GET / -> index.html
-            app.UseStaticFiles();    // serves /js/, /css/, *.html, etc.
-
             app.UseRouting();
 
             // Use the strict frontend policy in production, AllowAll in dev.
@@ -229,7 +224,12 @@ namespace RoomReservationSystem
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
-                // Note: GET /  serves wwwroot/index.html via UseDefaultFiles.
+                endpoints.MapGet("/", async ctx =>
+                {
+                    ctx.Response.ContentType = "text/plain";
+                    await ctx.Response.WriteAsync(
+                        "RoomLink API is running. The frontend is hosted separately on Vercel.");
+                });
                 endpoints.MapGet("/health", async ctx =>
                 {
                     ctx.Response.ContentType = "application/json";

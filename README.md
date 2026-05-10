@@ -3,14 +3,17 @@
 > **Course:** Com6064 Software Engineering
 > **Status:** Production-ready — deployed to Railway + Vercel; runs locally with the one-click launcher.
 
-**Live URLs (single Railway origin — frontend + API):**
-- App:     <https://university-qr-reservation-system-production.up.railway.app>
-- Swagger: <https://university-qr-reservation-system-production.up.railway.app/swagger>
-- Health:  <https://university-qr-reservation-system-production.up.railway.app/health>
+**Live URLs:**
+- Backend API: <https://university-qr-reservation-system-production.up.railway.app>
+- Health:      <https://university-qr-reservation-system-production.up.railway.app/health>
+- Frontend:    *(set after the first Vercel deploy)*
 
-> The frontend is served from the same Railway service as the API (via
-> ASP.NET Core's `wwwroot/`). This means **no CORS configuration**, no
-> separate Vercel deploy, and a single URL to share.
+> Architecture: backend on **Railway** (Docker, single service) + database on
+> **Railway PostgreSQL** + frontend on **Vercel** (static, served from
+> `frontend/` directory). The frontend's `<head>` injects
+> `window.RRS_API_BASE` so it always points at the Railway backend.
+> Swagger is restricted to development by default (set `ENABLE_SWAGGER=true`
+> on Railway to opt in).
 
 A three-tier room reservation platform with **QR-based check-in / check-out**.
 Students reserve study rooms in fixed 2-hour slots; staff and administrators
