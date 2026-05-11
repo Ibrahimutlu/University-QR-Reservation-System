@@ -1,5 +1,4 @@
 Auth.requireAuth();
-Nav.render("scan");
 
 const startBtn = document.getElementById("start-btn");
 const stopBtn = document.getElementById("stop-btn");
