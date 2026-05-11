@@ -36,9 +36,7 @@ namespace RoomReservationSystem.Controllers
             if (room == null)
                 return NotFound(new { message = "Room does not exist" });
 
-            var qr = _context.QRCodes.FirstOrDefault(q => q.RoomID == roomId);
-            if (qr == null)
-                return NotFound(new { message = "No QR code is attached to this room" });
+            var qr = EnsureRoomQr(room);
 
             string image = null;
             try
@@ -72,39 +70,18 @@ namespace RoomReservationSystem.Controllers
                 return NotFound(new { message = "Room does not exist" });
 
             var existingQR = _context.QRCodes.FirstOrDefault(q => q.RoomID == roomId);
-            if (existingQR != null)
-                return Ok(new
-                {
-                    message = "QR code already exists for this room",
-                    roomID = room.RoomID,
-                    roomName = room.RoomName,
-                    qrCodeValue = existingQR.QRCodeValue,
-                    isActive = existingQR.IsActive,
-                    qrImage = SafeGenerateQrImage(existingQR.QRCodeValue)
-                });
-
-            string qrCodeValue = $"ROOM-{room.RoomID}-{room.RoomName.Replace(" ", "").ToUpper()}";
-
-            string qrImage = SafeGenerateQrImage(qrCodeValue);
-
-            var qr = new RoomReservationSystem.Models.QR
-            {
-                RoomID = roomId,
-                QRCodeValue = qrCodeValue,
-                IsActive = true
-            };
-
-            _context.QRCodes.Add(qr);
-            _context.SaveChanges();
+            var qr = EnsureRoomQr(room);
 
             return Ok(new
             {
-                message = "QR code created successfully",
+                message = existingQR == null
+                    ? "QR code created successfully"
+                    : "QR code already exists for this room",
                 roomID = room.RoomID,
                 roomName = room.RoomName,
-                qrCodeValue = qrCodeValue,
-                isActive = true,
-                qrImage = qrImage
+                qrCodeValue = qr.QRCodeValue,
+                isActive = qr.IsActive,
+                qrImage = SafeGenerateQrImage(qr.QRCodeValue)
             });
         }
 
@@ -118,6 +95,8 @@ namespace RoomReservationSystem.Controllers
             var room = _context.Rooms.FirstOrDefault(r => r.RoomID == roomId);
             if (room == null)
                 return NotFound(new { message = "Room does not exist" });
+
+            EnsureRoomQr(room);
 
             string qrValue = _qrService.GenerateDynamicQRValue(roomId);
             string qrImage = SafeGenerateQrImage(qrValue);
@@ -352,6 +331,7 @@ namespace RoomReservationSystem.Controllers
 
             int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
             var now = DateTime.Now;
+            int? scanLogId = null;
 
             // Validate QR token if provided.  Accept both static QRCodeValue
             // and rotating dynamic tokens.
@@ -363,7 +343,14 @@ namespace RoomReservationSystem.Controllers
                     q.QRCodeValue == body.QrValue &&
                     q.IsActive);
                 if (!dynamicOk && !staticOk)
-                    return BadRequest(new { message = "QR code is invalid or expired" });
+                {
+                    scanLogId = RecordScanAttempt(userId, body.RoomId, null, "CheckIn", false, now);
+                    return BadRequest(new
+                    {
+                        message = "QR code is invalid or expired",
+                        scanLogID = scanLogId
+                    });
+                }
             }
 
             var reservation = _context.Reservations.FirstOrDefault(r =>
@@ -374,31 +361,28 @@ namespace RoomReservationSystem.Controllers
                 r.EndTime >= now);
 
             if (reservation == null)
+            {
+                scanLogId = RecordScanAttempt(userId, body.RoomId, null, "CheckIn", false, now);
                 return BadRequest(new
                 {
                     message = "Access denied",
-                    reason = "No valid reservation for this room at this time"
+                    reason = "No valid reservation for this room at this time",
+                    scanLogID = scanLogId
                 });
+            }
 
             reservation.Status = "CheckedIn";
             reservation.UpdatedAt = now;
 
-            _context.ScanLogs.Add(new ScanLog
-            {
-                UserID = userId,
-                RoomID = body.RoomId,
-                ReservationID = reservation.ReservationID,
-                ScanTime = now,
-                ScanType = "CheckIn",
-                AccessGranted = true
-            });
-
+            var scanLog = BuildScanLog(userId, body.RoomId, reservation.ReservationID, "CheckIn", true, now);
+            _context.ScanLogs.Add(scanLog);
             _context.SaveChanges();
 
             return Ok(new
             {
                 message = "Checked in",
                 reservationID = reservation.ReservationID,
+                scanLogID = scanLog.ScanLogID,
                 status = reservation.Status,
                 validUntil = reservation.EndTime
             });
@@ -419,6 +403,25 @@ namespace RoomReservationSystem.Controllers
 
             int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
             var now = DateTime.Now;
+            int? scanLogId = null;
+
+            if (!string.IsNullOrEmpty(body.QrValue))
+            {
+                bool dynamicOk = _qrService.ValidateDynamicQRValue(body.RoomId, body.QrValue);
+                bool staticOk = _context.QRCodes.Any(q =>
+                    q.RoomID == body.RoomId &&
+                    q.QRCodeValue == body.QrValue &&
+                    q.IsActive);
+                if (!dynamicOk && !staticOk)
+                {
+                    scanLogId = RecordScanAttempt(userId, body.RoomId, null, "CheckOut", false, now);
+                    return BadRequest(new
+                    {
+                        message = "QR code is invalid or expired",
+                        scanLogID = scanLogId
+                    });
+                }
+            }
 
             var reservation = _context.Reservations.FirstOrDefault(r =>
                 r.RoomID == body.RoomId &&
@@ -426,31 +429,28 @@ namespace RoomReservationSystem.Controllers
                 r.Status == "CheckedIn");
 
             if (reservation == null)
+            {
+                scanLogId = RecordScanAttempt(userId, body.RoomId, null, "CheckOut", false, now);
                 return BadRequest(new
                 {
                     message = "Cannot check out",
-                    reason = "No active check-in for this room"
+                    reason = "No active check-in for this room",
+                    scanLogID = scanLogId
                 });
+            }
 
             reservation.Status = "CheckedOut";
             reservation.UpdatedAt = now;
 
-            _context.ScanLogs.Add(new ScanLog
-            {
-                UserID = userId,
-                RoomID = body.RoomId,
-                ReservationID = reservation.ReservationID,
-                ScanTime = now,
-                ScanType = "CheckOut",
-                AccessGranted = true
-            });
-
+            var scanLog = BuildScanLog(userId, body.RoomId, reservation.ReservationID, "CheckOut", true, now);
+            _context.ScanLogs.Add(scanLog);
             _context.SaveChanges();
 
             return Ok(new
             {
                 message = "Checked out",
                 reservationID = reservation.ReservationID,
+                scanLogID = scanLog.ScanLogID,
                 status = reservation.Status
             });
         }
@@ -463,9 +463,11 @@ namespace RoomReservationSystem.Controllers
         [Authorize(Roles = "Admin")]
         public IActionResult RotateRoomQR(int roomId)
         {
-            var qr = _context.QRCodes.FirstOrDefault(q => q.RoomID == roomId);
-            if (qr == null)
-                return NotFound(new { message = "Room QR not found" });
+            var room = _context.Rooms.FirstOrDefault(r => r.RoomID == roomId);
+            if (room == null)
+                return NotFound(new { message = "Room does not exist" });
+
+            EnsureRoomQr(room);
 
             // Trigger a fresh dynamic value via QRService.  The static value
             // is preserved for legacy door stickers.
@@ -490,6 +492,77 @@ namespace RoomReservationSystem.Controllers
             {
                 return null;
             }
+        }
+
+        private RoomReservationSystem.Models.QR EnsureRoomQr(Room room)
+        {
+            var existing = _context.QRCodes.FirstOrDefault(q => q.RoomID == room.RoomID);
+            if (existing != null)
+                return existing;
+
+            var qrCodeValue = BuildRoomQrCodeValue(room);
+            var qr = new RoomReservationSystem.Models.QR
+            {
+                RoomID = room.RoomID,
+                QRCodeValue = qrCodeValue,
+                IsActive = true
+            };
+
+            room.QRCode = qrCodeValue;
+            _context.QRCodes.Add(qr);
+            _context.SaveChanges();
+
+            return qr;
+        }
+
+        private static string BuildRoomQrCodeValue(Room room)
+        {
+            var safeRoomName = new string((room.RoomName ?? "ROOM")
+                .Where(char.IsLetterOrDigit)
+                .ToArray())
+                .ToUpperInvariant();
+
+            if (string.IsNullOrWhiteSpace(safeRoomName))
+                safeRoomName = "ROOM";
+
+            return $"ROOM-{room.RoomID}-{safeRoomName}";
+        }
+
+        private ScanLog BuildScanLog(
+            int userId,
+            int roomId,
+            int? reservationId,
+            string scanType,
+            bool accessGranted,
+            DateTime scanTime)
+        {
+            return new ScanLog
+            {
+                UserID = userId,
+                RoomID = roomId,
+                ReservationID = reservationId,
+                ScanTime = scanTime,
+                ScanType = scanType,
+                AccessGranted = accessGranted
+            };
+        }
+
+        private int? RecordScanAttempt(
+            int userId,
+            int roomId,
+            int? reservationId,
+            string scanType,
+            bool accessGranted,
+            DateTime scanTime)
+        {
+            var roomExists = _context.Rooms.Any(r => r.RoomID == roomId);
+            if (!roomExists)
+                return null;
+
+            var scanLog = BuildScanLog(userId, roomId, reservationId, scanType, accessGranted, scanTime);
+            _context.ScanLogs.Add(scanLog);
+            _context.SaveChanges();
+            return scanLog.ScanLogID;
         }
 
         public class CheckInRequest

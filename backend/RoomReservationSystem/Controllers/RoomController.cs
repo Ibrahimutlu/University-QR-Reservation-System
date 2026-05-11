@@ -231,7 +231,24 @@ namespace RoomReservationSystem.Controllers
             _context.Rooms.Add(room);
             _context.SaveChanges();
 
-            return Ok(new { message = "Room added successfully", RoomID = room.RoomID });
+            var qrCodeValue = BuildRoomQrCodeValue(room);
+            var qr = new QR
+            {
+                RoomID = room.RoomID,
+                QRCodeValue = qrCodeValue,
+                IsActive = true
+            };
+
+            room.QRCode = qrCodeValue;
+            _context.QRCodes.Add(qr);
+            _context.SaveChanges();
+
+            return Ok(new
+            {
+                message = "Room added successfully",
+                RoomID = room.RoomID,
+                qrCodeValue = qrCodeValue
+            });
         }
 
         [HttpPut("update/{roomId}")]
@@ -285,6 +302,19 @@ namespace RoomReservationSystem.Controllers
             _context.SaveChanges();
 
             return Ok(new { message = "Room deleted successfully" });
+        }
+
+        private static string BuildRoomQrCodeValue(Room room)
+        {
+            var safeRoomName = new string((room.RoomName ?? "ROOM")
+                .Where(char.IsLetterOrDigit)
+                .ToArray())
+                .ToUpperInvariant();
+
+            if (string.IsNullOrWhiteSpace(safeRoomName))
+                safeRoomName = "ROOM";
+
+            return $"ROOM-{room.RoomID}-{safeRoomName}";
         }
     }
 }
