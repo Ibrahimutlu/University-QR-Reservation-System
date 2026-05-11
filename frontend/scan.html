@@ -5,58 +5,68 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>RoomLink | Scan QR</title>
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="page-bg"></div>
-  <div id="nav-slot"></div>
+
+  <header class="site-header">
+    <div class="container header-container">
+      <div class="brand">
+        <div class="brand-badge">QR</div>
+        <div class="brand-text">
+          <h1>QR-Integrated University Room Reservation System</h1>
+          <p>QR Scanner</p>
+        </div>
+      </div>
+
+      <nav class="navbar">
+        <a class="nav-link" href="rooms.html">Rooms</a>
+        <a class="nav-link" href="reserve.html">Reserve</a>
+        <a class="nav-link" href="my-reservations.html">My Reservations</a>
+        <a class="nav-link active" href="scan.html">Scan QR</a>
+        <a id="adminNavLink" class="nav-link hidden" href="admin-dashboard.html">Dashboard</a>
+        <button id="logoutBtn" class="secondary-btn" type="button">Logout</button>
+      </nav>
+    </div>
+  </header>
 
   <main class="main-content">
-    <section class="scanner-layout">
-      <article class="scanner-card scanner-header reveal">
-        <p class="section-label">QR Scanner</p>
-        <h2>Scan Room or Reservation QR</h2>
-        <p>
-          Choose an action and scan a room sticker QR or a reservation QR payload.
-          This screen is aligned with backend QR endpoints.
-        </p>
-      </article>
-
-      <article class="scanner-card reveal delay-1">
-        <div id="reader"></div>
-
-        <div class="scan-controls">
-          <div class="form-group">
-            <label for="scanMode">Scan Action</label>
-            <select id="scanMode">
-              <option value="validate">Validate Access</option>
-              <option value="checkin">Check In</option>
-              <option value="checkout">Check Out</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label for="manual">Manual QR Input</label>
-            <input id="manual" type="text" placeholder="ROOM-1-LAB101 or reservation JSON" />
-          </div>
+    <section class="scanner-section">
+      <div class="container scanner-grid">
+        <div class="section-heading reveal">
+          <p class="section-label">QR Scanner</p>
+          <h2>Room Entry Scanner</h2>
+          <p>Choose check-in or check-out before scanning the current room QR.</p>
         </div>
 
-        <div class="scanner-actions">
-          <button id="start-btn" class="primary-btn" type="button">Start Camera</button>
-          <button id="stop-btn" class="secondary-btn hidden" type="button">Stop Camera</button>
-          <button id="manual-btn" class="secondary-btn" type="button">Run Manual Action</button>
+        <div class="scan-mode-toggle reveal delay-1" aria-label="Scan mode">
+          <button id="checkinModeBtn" class="active" type="button" data-mode="checkin">Check In</button>
+          <button id="checkoutModeBtn" type="button" data-mode="checkout">Check Out</button>
         </div>
-      </article>
 
-      <article id="result" class="reveal delay-2"></article>
+        <article class="scanner-frame reveal delay-2">
+          <div id="reader"></div>
+
+          <div class="scanner-actions">
+            <button id="start-btn" class="primary-btn" type="button">Start Camera</button>
+            <button id="stop-btn" class="secondary-btn hidden" type="button">Stop Camera</button>
+          </div>
+
+          <div class="manual-row">
+            <input id="manual" type="text" placeholder="Paste QR value manually" />
+            <button id="manual-btn" class="secondary-btn" type="button">Run</button>
+          </div>
+        </article>
+
+        <article id="result" class="reveal delay-3"></article>
+      </div>
     </section>
   </main>
 
-  <script>window.RRS_API_BASE = (["localhost","127.0.0.1"].includes(window.location.hostname) ? "http://localhost:5000" : window.location.origin);</script>
   <script src="js/config.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/api.js"></script>
-  <script src="js/nav.js"></script>
   <script src="js/scan.js"></script>
 </body>
 </html>

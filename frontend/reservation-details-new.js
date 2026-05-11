@@ -33,20 +33,6 @@ const summaryStatusEl = document.getElementById("summaryStatus");
 const summaryStartEl = document.getElementById("summaryStart");
 const summaryEndEl = document.getElementById("summaryEnd");
 
-// QR panel removed from the student view per project spec.
-// All QR DOM lookups left in place would be null — explicit no-op below
-// avoids "Cannot read property of null" if older code paths still reference
-// them.
-const qrBox = null;
-const qrFallbackText = null;
-const qrImage = null;
-const qrMessage = null;
-const qrStatus = null;
-const qrExpiry = null;
-const viewQrBtn = null;
-const qrReservationIdText = null;
-const qrRoomNameText = null;
-
 function getToken() {
   return localStorage.getItem("token") || localStorage.getItem("rrs.token");
 }
@@ -192,13 +178,6 @@ function getRoomDisplayName(reservation) {
   return "-";
 }
 
-// QR display helpers intentionally removed.
-// Per project spec, students never see QR codes inside the UI; they scan
-// the door's rotating QR via scan.html.  The reservation details page now
-// directs the user to scan.html via a CTA in the HTML.
-function setQRNotAvailable() { /* no-op */ }
-function loadExternalRoomQr() { /* no-op */ }
-
 function populateDetails(reservation) {
   const reservationId = getReservationNumericId(reservation) ?? "-";
   const roomDisplay = getRoomDisplayName(reservation);
@@ -223,7 +202,6 @@ function populateDetails(reservation) {
   summaryStartEl.textContent = formatDateTime(start);
   summaryEndEl.textContent = formatDateTime(end);
 
-  // qrReservationIdText / qrRoomNameText panel was removed from this page.
   statusBadge.textContent = status;
   statusBadge.className = `status-badge ${getStatusClass(status)}`;
 
@@ -251,7 +229,6 @@ function populateDetails(reservation) {
   }
 
   detailsContent.classList.remove("hidden");
-  // QR panel removed for students — see scan.html for entry/exit.
 }
 
 async function apiRequest(url, options = {}) {
@@ -332,7 +309,6 @@ async function loadReservationDetails() {
 
   if (!token || (!userId && !["admin", "staff"].includes(String(role || "").trim().toLowerCase()))) {
     hideLoading();
-    setQRNotAvailable("Login is required.");
     showMessage("error", "Login Required", "You must log in first before viewing reservation details.");
     return;
   }
@@ -351,7 +327,6 @@ async function loadReservationDetails() {
     populateDetails(reservation);
   } catch (error) {
     hideLoading();
-    setQRNotAvailable();
     showMessage("error", "Load Failed", error.message || "Unable to load reservation details.");
     console.error("Error loading reservation details:", error);
   }
@@ -466,5 +441,3 @@ function setupDashboardLink() {
 
 setupDashboardLink();
 loadReservationDetails();
-
-

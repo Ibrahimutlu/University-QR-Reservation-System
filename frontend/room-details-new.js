@@ -404,7 +404,12 @@ function renderRoomDetails(room, statusData) {
         );
     }
 
-    loadRoomQr(room.roomID, room.roomName);
+    const role = getRole();
+    if (role === "admin" || role === "staff") {
+        loadRoomQr(room.roomID, room.roomName);
+    } else {
+        hideQrSection();
+    }
 }
 
 async function initializePage() {

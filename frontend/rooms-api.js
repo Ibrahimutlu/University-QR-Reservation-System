@@ -6,9 +6,7 @@ const roomsContainer = document.getElementById("roomsContainer");
 const filterForm = document.getElementById("filterForm");
 const searchInput = document.getElementById("search");
 const roomTypeSelect = document.getElementById("roomType");
-const capacitySelect = document.getElementById("capacity");
-const locationSelect = document.getElementById("location");
-const availabilitySelect = document.getElementById("availability");
+const filterResultCount = document.getElementById("filterResultCount");
 const emptyState = document.getElementById("emptyState");
 const totalRoomsElement = document.getElementById("totalRooms");
 const availableRoomsElement = document.getElementById("availableRooms");
@@ -159,14 +157,7 @@ function populateDynamicFilters(data) {
             .filter(Boolean)
     )].sort((a, b) => a.localeCompare(b));
 
-    const locations = [...new Set(
-        data
-            .map((room) => String(room.location || "").trim())
-            .filter(Boolean)
-    )].sort((a, b) => a.localeCompare(b));
-
     populateSelect(roomTypeSelect, roomTypes, "All Types");
-    populateSelect(locationSelect, locations, "All Locations");
 }
 
 function createRoomCard(room) {
@@ -210,34 +201,9 @@ function renderRooms(data) {
     });
 }
 
-function matchesCapacity(roomCapacity, selectedRange) {
-    if (!selectedRange) return true;
-
-    if (selectedRange === "1-10") {
-        return roomCapacity >= 1 && roomCapacity <= 10;
-    }
-
-    if (selectedRange === "11-30") {
-        return roomCapacity >= 11 && roomCapacity <= 30;
-    }
-
-    if (selectedRange === "31-50") {
-        return roomCapacity >= 31 && roomCapacity <= 50;
-    }
-
-    if (selectedRange === "50-plus") {
-        return roomCapacity > 50;
-    }
-
-    return true;
-}
-
 function filterRooms() {
     const searchValue = searchInput.value.trim().toLowerCase();
     const roomTypeValue = roomTypeSelect.value;
-    const capacityValue = capacitySelect.value;
-    const locationValue = locationSelect.value;
-    const availabilityValue = availabilitySelect.value;
 
     const filteredRooms = rooms.filter((room) => {
         const matchesSearch =
@@ -245,25 +211,18 @@ function filterRooms() {
             String(room.id).includes(searchValue);
 
         const matchesType = !roomTypeValue || room.type === roomTypeValue;
-        const matchesLocation = !locationValue || room.location === locationValue;
 
-        const matchesAvailability =
-            !availabilityValue ||
-            (availabilityValue === "Available" && room.isAvailable);
-
-        const capacityMatch = matchesCapacity(Number(room.capacity), capacityValue);
-
-        return (
-            matchesSearch &&
-            matchesType &&
-            matchesLocation &&
-            matchesAvailability &&
-            capacityMatch
-        );
+        return matchesSearch && matchesType;
     });
 
     renderRooms(filteredRooms);
     updateStats(filteredRooms);
+    updateFilterCount(filteredRooms.length);
+}
+
+function updateFilterCount(count) {
+    if (!filterResultCount) return;
+    filterResultCount.textContent = `${count} ${count === 1 ? "room" : "rooms"}`;
 }
 
 async function loadRooms() {
@@ -279,12 +238,14 @@ async function loadRooms() {
 
         renderRooms(rooms);
         updateStats(rooms);
+        updateFilterCount(rooms.length);
     } catch (error) {
         console.error("Failed to load rooms:", error);
 
         rooms = [];
         renderRooms([]);
         updateStats([]);
+        updateFilterCount(0);
 
         const titleEl = emptyState.querySelector("h3");
         const textEl = emptyState.querySelector("p");
@@ -310,15 +271,10 @@ async function loadRooms() {
 
 filterForm.addEventListener("submit", function (event) {
     event.preventDefault();
-    filterRooms();
 });
 
-filterForm.addEventListener("reset", function () {
-    setTimeout(() => {
-        renderRooms(rooms);
-        updateStats(rooms);
-    }, 0);
-});
+if (searchInput) searchInput.addEventListener("input", filterRooms);
+if (roomTypeSelect) roomTypeSelect.addEventListener("change", filterRooms);
 
 if (logoutBtn) {
     logoutBtn.addEventListener("click", () => {

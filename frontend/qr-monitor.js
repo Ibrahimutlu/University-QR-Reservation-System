@@ -23,8 +23,17 @@ let pollTimer = null;
 let countdownTimer = null;
 
 // ─── Auth helpers ───────────────────────────────────────────────
-function getToken() { return localStorage.getItem("token"); }
-function getRole()  { return (localStorage.getItem("role") || "").trim().toLowerCase(); }
+function getToken() {
+    return localStorage.getItem("token") || localStorage.getItem("rrs.token");
+}
+
+function getRole() {
+    return (
+        localStorage.getItem("role") ||
+        localStorage.getItem("rrs.role") ||
+        ""
+    ).trim().toLowerCase();
+}
 
 function requireStaffOrAdmin() {
     const token = getToken();
@@ -108,13 +117,14 @@ async function refreshRoomQR(card) {
 
     try {
         const data = await apiGet(`${QR_DYNAMIC_BASE_URL}/${roomId}`);
-        if (!data || !data.qrImage) throw new Error("Empty QR response");
+        const qrImageValue = data?.qrImage ?? data?.QrImage;
+        if (!qrImageValue) throw new Error("Empty QR response");
 
         // Avoid the flash if the image hasn't changed.
-        if (img.src !== data.qrImage) {
+        if (img.src !== qrImageValue) {
             frame.classList.add("fading");
             setTimeout(() => {
-                img.src = data.qrImage;
+                img.src = qrImageValue;
                 frame.classList.remove("fading");
             }, 120);
         }
@@ -171,6 +181,10 @@ if (logoutBtn) {
         localStorage.removeItem("token");
         localStorage.removeItem("userID");
         localStorage.removeItem("role");
+        localStorage.removeItem("rrs.token");
+        localStorage.removeItem("rrs.role");
+        localStorage.removeItem("rrs.userId");
+        localStorage.removeItem("rrs.email");
         if (pollTimer)      clearInterval(pollTimer);
         if (countdownTimer) clearInterval(countdownTimer);
         window.location.href = "login.html";

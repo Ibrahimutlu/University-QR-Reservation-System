@@ -6,18 +6,38 @@ const stopBtn = document.getElementById("stop-btn");
 const manualBtn = document.getElementById("manual-btn");
 const manualEl = document.getElementById("manual");
 const resultEl = document.getElementById("result");
-const scanModeEl = document.getElementById("scanMode");
+const modeButtons = Array.from(document.querySelectorAll(".scan-mode-toggle button"));
+const logoutBtn = document.getElementById("logoutBtn");
+const adminNavLink = document.getElementById("adminNavLink");
 
 let html5QrCode = null;
 let scanning = false;
+let currentMode = "checkin";
 
 function activeMode() {
-  const raw = (scanModeEl && scanModeEl.value) || "validate";
-  return ["validate", "checkin", "checkout"].includes(raw) ? raw : "validate";
+  return currentMode === "checkout" ? "checkout" : "checkin";
+}
+
+function setupDashboardLink() {
+  const role = String(Auth.role() || "").trim().toLowerCase();
+  if (!adminNavLink) return;
+
+  if (role === "admin" || role === "staff") {
+    adminNavLink.classList.remove("hidden");
+  } else {
+    adminNavLink.classList.add("hidden");
+  }
+}
+
+function setMode(mode) {
+  currentMode = mode === "checkout" ? "checkout" : "checkin";
+  modeButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.mode === currentMode);
+  });
 }
 
 function extractRoomIdFromText(text) {
-  const roomPattern = /ROOM-(\d+)-/i;
+  const roomPattern = /(?:ROOM|DYN)-(\d+)-/i;
   const roomMatch = String(text || "").match(roomPattern);
   if (roomMatch && roomMatch[1]) return Number(roomMatch[1]);
 
@@ -66,14 +86,6 @@ async function routePayload(text) {
 
   const asJson = value.startsWith("{") ? tryParseJson(value) : null;
 
-  if (mode === "validate") {
-    if (asJson) {
-      return normalizeSuccessData(await Api.validateReservationQR(value));
-    }
-    return normalizeSuccessData(await Api.validateRoomQR(value));
-  }
-
-  // check-in / check-out flow
   let roomId = null;
   let qrValue = null;
 
@@ -102,23 +114,19 @@ async function routePayload(text) {
 }
 
 function showSuccess(res) {
-  const actionLabel = activeMode() === "validate"
-    ? "Access Validation Successful"
-    : activeMode() === "checkin"
-      ? "Check-In Successful"
-      : "Check-Out Successful";
+  const isCheckIn = activeMode() === "checkin";
+  const actionLabel = isCheckIn ? "Access Granted" : "Check-Out Complete";
+  const roomText = res.roomID ? `Room #${res.roomID}` : "Room confirmed";
+  const timeText = new Date().toLocaleString();
 
   resultEl.innerHTML = `
-    <div class="result-card success">
+    <div class="access-result granted">
+      <div class="result-icon">OK</div>
       <h3>${actionLabel}</h3>
       <p>${res.message || "Operation completed successfully."}</p>
-      <dl>
-        ${res.reservationID ? `<dt>Reservation</dt><dd>#${res.reservationID}</dd>` : ""}
-        ${res.roomID ? `<dt>Room</dt><dd>#${res.roomID}</dd>` : ""}
-        ${res.userID ? `<dt>User</dt><dd>#${res.userID}</dd>` : ""}
-        ${res.status ? `<dt>Status</dt><dd>${res.status}</dd>` : ""}
-        ${res.validUntil ? `<dt>Valid Until</dt><dd>${new Date(res.validUntil).toLocaleString()}</dd>` : ""}
-      </dl>
+      <p class="meta">${roomText}</p>
+      <p class="meta">${timeText}</p>
+      ${res.status ? `<p class="meta">Status: ${res.status}</p>` : ""}
       <div class="scanner-actions">
         <button class="primary-btn" type="button" onclick="window.scanReset()">Scan Again</button>
       </div>
@@ -127,8 +135,9 @@ function showSuccess(res) {
 
 function showError(message) {
   resultEl.innerHTML = `
-    <div class="result-card error">
-      <h3>Action Failed</h3>
+    <div class="access-result denied">
+      <div class="result-icon">!</div>
+      <h3>Access Denied</h3>
       <p>${message}</p>
       <div class="scanner-actions">
         <button class="secondary-btn" type="button" onclick="window.scanReset()">Try Again</button>
@@ -189,6 +198,9 @@ async function stopCamera() {
 
 startBtn.addEventListener("click", startCamera);
 stopBtn.addEventListener("click", stopCamera);
+modeButtons.forEach((button) => {
+  button.addEventListener("click", () => setMode(button.dataset.mode));
+});
 manualBtn.addEventListener("click", async () => {
   const raw = manualEl.value.trim();
   if (!raw) {
@@ -203,3 +215,10 @@ manualBtn.addEventListener("click", async () => {
     showError(err.message || "Manual action failed.");
   }
 });
+
+if (logoutBtn) {
+  logoutBtn.addEventListener("click", Auth.logout);
+}
+
+setupDashboardLink();
+setMode("checkin");
