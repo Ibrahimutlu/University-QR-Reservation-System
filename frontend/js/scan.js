@@ -29,6 +29,11 @@ function setupDashboardLink() {
   }
 }
 
+function canViewRoomIds() {
+  const role = String(Auth.role() || "").trim().toLowerCase();
+  return role === "admin" || role === "staff";
+}
+
 function setMode(mode) {
   currentMode = mode === "checkout" ? "checkout" : "checkin";
   modeButtons.forEach((button) => {
@@ -101,7 +106,7 @@ async function routePayload(text) {
   }
 
   if (!roomId) {
-    throw new Error("Room ID could not be resolved from QR payload.");
+    throw new Error("Room could not be resolved from QR payload.");
   }
 
   const payload = { roomId, qrValue };
@@ -116,7 +121,7 @@ async function routePayload(text) {
 function showSuccess(res) {
   const isCheckIn = activeMode() === "checkin";
   const actionLabel = isCheckIn ? "Access Granted" : "Check-Out Complete";
-  const roomText = res.roomID ? `Room #${res.roomID}` : "Room confirmed";
+  const roomText = canViewRoomIds() && res.roomID ? `Room #${res.roomID}` : "Room confirmed";
   const timeText = new Date().toLocaleString();
 
   resultEl.innerHTML = `

@@ -29,6 +29,8 @@ const errors = {
 };
 
 const preview = {
+    roomRow: document.getElementById("previewRoomRow"),
+    roomLabel: document.getElementById("previewRoomLabel"),
     roomId: document.getElementById("previewRoomId"),
     date: document.getElementById("previewDate"),
     startTime: document.getElementById("previewStartTime"),
@@ -45,6 +47,7 @@ const adminNavLink = document.getElementById("adminNavLink");
 let allSlots = [];
 let selectedSlot = null;
 let roomLockedFromQuery = false;
+let roomsById = new Map();
 
 function getStoredUserId() {
     return localStorage.getItem("userID") || localStorage.getItem("rrs.userId");
@@ -60,6 +63,11 @@ function getRole() {
         localStorage.getItem("rrs.role") ||
         ""
     ).trim().toLowerCase();
+}
+
+function canViewRoomIds() {
+    const role = getRole();
+    return role === "admin" || role === "staff";
 }
 
 if (!getToken()) {
@@ -78,6 +86,15 @@ function setupDashboardLink() {
     } else {
         adminNavLink.classList.add("hidden");
     }
+}
+
+function selectedRoomLabel() {
+    const selectedId = fields.roomId.value;
+    const room = roomsById.get(String(selectedId));
+    if (room) return room.name;
+
+    const selectedOption = fields.roomId.options[fields.roomId.selectedIndex];
+    return selectedOption && selectedOption.value ? selectedOption.textContent : "-";
 }
 
 async function syncWarnings() {
@@ -180,7 +197,13 @@ function formatRemainingCapacity(slot) {
 }
 
 function updatePreview() {
-    preview.roomId.textContent = fields.roomId.value || "-";
+    if (preview.roomLabel) {
+        preview.roomLabel.textContent = canViewRoomIds() ? "Room ID" : "Room";
+    }
+
+    preview.roomId.textContent = canViewRoomIds()
+        ? (fields.roomId.value || "-")
+        : selectedRoomLabel();
     preview.date.textContent = formatDate(fields.reservationDate.value);
     preview.startTime.textContent = selectedSlot ? selectedSlot.startTime : "-";
     preview.endTime.textContent = selectedSlot ? selectedSlot.endTime : "-";
@@ -227,6 +250,7 @@ function normalizeRoom(room) {
 
 function populateRoomOptions(rooms) {
     const selected = fields.roomId.value;
+    roomsById = new Map(rooms.map((room) => [String(room.id), room]));
     fields.roomId.innerHTML = "";
 
     const placeholder = document.createElement("option");
@@ -237,7 +261,7 @@ function populateRoomOptions(rooms) {
     rooms.forEach((room) => {
         const option = document.createElement("option");
         option.value = String(room.id);
-        option.textContent = `${room.name} (ID: ${room.id})`;
+        option.textContent = canViewRoomIds() ? `${room.name} (ID: ${room.id})` : room.name;
         fields.roomId.appendChild(option);
     });
 
@@ -252,7 +276,7 @@ function populateRoomOptions(rooms) {
             fields.roomId.innerHTML = "";
             const fallback = document.createElement("option");
             fallback.value = String(selected);
-            fallback.textContent = `Room #${selected}`;
+            fallback.textContent = canViewRoomIds() ? `Room #${selected}` : "Selected room";
             fields.roomId.appendChild(fallback);
             fields.roomId.value = String(selected);
         }
@@ -511,7 +535,7 @@ function validateForm() {
     }
 
     if (!fields.roomId.value.trim()) {
-        showError("roomId", "Room ID is required.");
+        showError("roomId", "Room is required.");
         isValid = false;
     }
 

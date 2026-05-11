@@ -113,6 +113,19 @@ function extractReservationsArray(data) {
     return [];
 }
 
+function getRole() {
+    return (
+        localStorage.getItem("role") ||
+        localStorage.getItem("rrs.role") ||
+        ""
+    ).trim().toLowerCase();
+}
+
+function canViewRoomIds() {
+    const role = getRole();
+    return role === "admin" || role === "staff";
+}
+
 function createReservationCard(reservation) {
     const article = document.createElement("article");
     article.className = "reservation-card";
@@ -154,6 +167,9 @@ function createReservationCard(reservation) {
     const status = normalizeStatus(reservation.status ?? reservation.Status);
     const statusClass = getStatusClass(status);
     const isCancelled = isCancelledStatus(status);
+    const roomIdLine = canViewRoomIds()
+        ? `<p><strong>Room ID:</strong> ${roomId}</p>`
+        : "";
 
     article.innerHTML = `
     <div class="reservation-top">
@@ -162,7 +178,7 @@ function createReservationCard(reservation) {
     </div>
 
     <div class="reservation-grid">
-      <p><strong>Room ID:</strong> ${roomId}</p>
+      ${roomIdLine}
       <p><strong>Date:</strong> ${formatDate(date)}</p>
       <p><strong>Start Time:</strong> ${formatDateTime(startTime)}</p>
       <p><strong>End Time:</strong> ${formatDateTime(endTime)}</p>

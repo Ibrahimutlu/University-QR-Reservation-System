@@ -77,6 +77,17 @@ function setupDashboardLink() {
     }
 }
 
+function canViewRoomIds() {
+    const role = getRole();
+    return role === "admin" || role === "staff";
+}
+
+function applyRoomIdVisibility() {
+    document.querySelectorAll(".room-id-only").forEach((element) => {
+        element.classList.toggle("hidden", !canViewRoomIds());
+    });
+}
+
 function showMessage(type, title, text) {
     if (!messageBox) return;
 
@@ -363,10 +374,12 @@ function renderRoomDetails(room, statusData) {
     heroRoomSubtitle.textContent = `View the live status and room information for ${room.roomName}.`;
 
     heroStatusText.textContent = statusText;
-    heroRoomId.textContent = room.roomID;
+    if (canViewRoomIds()) {
+        heroRoomId.textContent = room.roomID;
+        roomIdEl.textContent = room.roomID;
+    }
     heroRoomType.textContent = room.roomType;
 
-    roomIdEl.textContent = room.roomID;
     roomNameEl.textContent = room.roomName;
     roomTypeEl.textContent = room.roomType;
     availabilityText.textContent = statusText;
@@ -416,7 +429,7 @@ async function initializePage() {
     const targetRoomId = getRoomIdFromUrl();
 
     if (!targetRoomId) {
-        showMessage("warning", "Missing Room ID", "No room ID was provided in the URL.");
+        showMessage("warning", "Missing Room", "No room was provided in the URL.");
         hideQrSection();
         return;
     }
@@ -462,6 +475,7 @@ if (logoutBtn) {
 }
 
 setupDashboardLink();
+applyRoomIdVisibility();
 initializePage();
 
 

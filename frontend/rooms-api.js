@@ -27,6 +27,11 @@ function getRole() {
     ).trim().toLowerCase();
 }
 
+function canViewRoomIds() {
+    const role = getRole();
+    return role === "admin" || role === "staff";
+}
+
 function setupDashboardLink() {
     if (!adminNavLink) return;
 
@@ -163,10 +168,13 @@ function populateDynamicFilters(data) {
 function createRoomCard(room) {
     const article = document.createElement("article");
     article.className = "room-card";
+    const roomIdBadge = canViewRoomIds()
+        ? `<span class="room-id">Room ID: ${room.id}</span>`
+        : "";
 
     article.innerHTML = `
     <div class="room-header">
-      <span class="room-id">Room ID: ${room.id}</span>
+      ${roomIdBadge}
       <span class="room-status status-available">${room.status}</span>
     </div>
 

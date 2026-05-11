@@ -174,7 +174,13 @@ function getRoomDisplayName(reservation) {
   }
 
   const roomId = getRoomId(reservation);
-  if (roomId !== null && roomId !== undefined) return `Room #${roomId}`;
+  if (
+    roomId !== null &&
+    roomId !== undefined &&
+    ["admin", "staff"].includes(String(getRole() || "").trim().toLowerCase())
+  ) {
+    return `Room #${roomId}`;
+  }
   return "-";
 }
 
