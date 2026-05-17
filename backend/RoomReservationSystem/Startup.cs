@@ -69,6 +69,10 @@ namespace RoomReservationSystem
             services.AddScoped<JwtService>();
             services.AddSingleton<QRService>();
 
+            // Idempotently adds final-submission columns/tables on older
+            // deployed databases before the sweep starts querying them.
+            services.AddHostedService<SchemaRepairService>();
+
             // Background sweep: turns dashboard-on-read warnings into
             // always-on enforcement (expired/no-show/no-exit/break-overrun).
             services.AddHostedService<ReservationSweepService>();

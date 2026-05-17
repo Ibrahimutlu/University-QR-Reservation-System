@@ -34,7 +34,11 @@
 
   function resolveApiBase() {
     if (typeof window.RRS_API_BASE === "string" && window.RRS_API_BASE.length > 0) {
-      return stripTrailingSlash(window.RRS_API_BASE);
+      var explicit = stripTrailingSlash(window.RRS_API_BASE);
+      var pageOrigin = stripTrailingSlash(window.location.origin || "");
+      if (isLocalHost(window.location.hostname) || explicit !== pageOrigin) {
+        return explicit;
+      }
     }
     var stored = (typeof localStorage !== "undefined")
       ? localStorage.getItem("rrs_api_base")

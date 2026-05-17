@@ -502,7 +502,7 @@ namespace RoomReservationSystem.Controllers
 
             foreach (var r in live)
             {
-                bool hasCheckin = r.ReservationID is int id && checkIns.Contains(id);
+                bool hasCheckin = checkIns.Contains(r.ReservationID);
                 if (hasCheckin) continue;
 
                 if (now < r.StartTime) continue;          // not started yet

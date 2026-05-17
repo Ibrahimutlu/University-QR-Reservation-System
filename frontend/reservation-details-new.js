@@ -1,6 +1,13 @@
-const API_BASE_URL = (typeof window !== "undefined" && window.RRS_API_BASE
-    ? window.RRS_API_BASE
-    : "http://localhost:5000") + "/api";
+const __RRS_BASE = (() => {
+    const fallback = "https://university-qr-reservation-system-production.up.railway.app";
+    if (typeof window === "undefined") return "http://localhost:5000";
+    const host = window.location.hostname;
+    const explicit = window.RRS_API_BASE ? String(window.RRS_API_BASE).replace(/\/+$/, "") : "";
+    const pageOrigin = String(window.location.origin || "").replace(/\/+$/, "");
+    if (explicit && (["localhost", "127.0.0.1"].includes(host) || explicit !== pageOrigin)) return explicit;
+    return ["localhost", "127.0.0.1"].includes(host) ? "http://localhost:5000" : fallback;
+})();
+const API_BASE_URL = __RRS_BASE + "/api";
 
 const statusBadge = document.getElementById("statusBadge");
 const loadingState = document.getElementById("loadingState");

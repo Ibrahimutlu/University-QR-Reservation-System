@@ -17,10 +17,16 @@
 
   function apiBase() {
     if (window.APP_CONFIG && window.APP_CONFIG.API_BASE) return window.APP_CONFIG.API_BASE;
-    if (window.RRS_API_BASE) return window.RRS_API_BASE;
+    if (window.RRS_API_BASE) {
+      const explicit = String(window.RRS_API_BASE).replace(/\/+$/, "");
+      const pageOrigin = String(window.location.origin || "").replace(/\/+$/, "");
+      if (["localhost", "127.0.0.1"].includes(window.location.hostname) || explicit !== pageOrigin) {
+        return explicit;
+      }
+    }
     const host = window.location.hostname;
     if (host === "localhost" || host === "127.0.0.1") return "http://localhost:5000";
-    return window.location.origin;
+    return "https://university-qr-reservation-system-production.up.railway.app";
   }
 
   async function callJson(method, path) {
@@ -83,7 +89,9 @@
 
   function render(items) {
     const el = ensureBanner();
-    const visible = (items || []).filter(function (n) { return !n.isRead; });
+    const visible = (items || [])
+      .map(normalizeNotification)
+      .filter(function (n) { return !n.isRead; });
     if (visible.length === 0) {
       el.style.display = "none";
       el.innerHTML = "";
@@ -135,7 +143,7 @@
   async function dismiss(id) {
     try {
       await callJson("POST", "/api/notifications/" + id + "/read");
-      lastPayload = lastPayload.map(function (n) {
+      lastPayload = lastPayload.map(normalizeNotification).map(function (n) {
         return n.notificationID === id
           ? Object.assign({}, n, { isRead: true, readAt: new Date().toISOString() })
           : n;
@@ -147,9 +155,25 @@
   async function poll() {
     try {
       const data = await callJson("GET", "/api/notifications/me");
-      lastPayload = Array.isArray(data) ? data : [];
+      lastPayload = Array.isArray(data) ? data.map(normalizeNotification) : [];
       render(lastPayload);
     } catch (_) { /* tab/network blip — keep last view */ }
+  }
+
+  function normalizeNotification(n) {
+    n = n || {};
+    const readAt = n.readAt ?? n.ReadAt ?? null;
+    return {
+      notificationID: n.notificationID ?? n.NotificationID ?? n.id ?? n.ID,
+      userID: n.userID ?? n.UserID,
+      reservationID: n.reservationID ?? n.ReservationID,
+      type: n.type ?? n.Type ?? "Info",
+      message: n.message ?? n.Message ?? "",
+      severity: n.severity ?? n.Severity ?? "warning",
+      createdAt: n.createdAt ?? n.CreatedAt,
+      readAt: readAt,
+      isRead: Boolean(n.isRead ?? n.IsRead ?? readAt)
+    };
   }
 
   function startPolling() {

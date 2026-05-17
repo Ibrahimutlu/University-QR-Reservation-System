@@ -12,6 +12,8 @@ namespace RoomReservationSystem.Controllers
     public class RoomController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private static readonly string[] LiveStatuses =
+            { "Pending", "Confirmed", "Active", "CheckedIn", "OnBreak" };
 
         public RoomController(AppDbContext context)
         {
@@ -36,12 +38,9 @@ namespace RoomReservationSystem.Controllers
             var slotDuration = TimeSpan.FromHours(2);
 
             // "Live" reservations block a slot (incl. checked-in students).
-            var liveStatuses = new[]
-                { "Pending", "Confirmed", "Active", "CheckedIn" };
-
             var reservations = _context.Reservations
                 .Where(r => r.RoomID == roomId &&
-                       liveStatuses.Contains(r.Status) &&
+                       LiveStatuses.Contains(r.Status) &&
                        r.StartTime < workingEnd &&
                        r.EndTime > workingStart)
                 .Select(r => new
@@ -106,7 +105,7 @@ namespace RoomReservationSystem.Controllers
             // Count active bookings at current time
             int currentBookings = _context.Reservations.Count(r =>
                 r.RoomID == roomId &&
-                r.Status != "Cancelled" &&
+                LiveStatuses.Contains(r.Status) &&
                 r.StartTime <= now &&
                 r.EndTime >= now);
 
@@ -183,7 +182,7 @@ namespace RoomReservationSystem.Controllers
                 {
                     currentBookings = _context.Reservations.Count(r =>
                         r.RoomID == room.RoomID &&
-                        r.Status != "Cancelled" &&
+                        LiveStatuses.Contains(r.Status) &&
                         r.StartTime < endTime.Value &&
                         r.EndTime > startTime.Value);
                 }

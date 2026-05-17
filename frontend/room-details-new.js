@@ -1,6 +1,13 @@
-const ROOM_API_BASE_URL = (typeof window !== "undefined" && window.RRS_API_BASE
-    ? window.RRS_API_BASE
-    : "http://localhost:5000") + "/api/room";
+const __RRS_BASE = (() => {
+    const fallback = "https://university-qr-reservation-system-production.up.railway.app";
+    if (typeof window === "undefined") return "http://localhost:5000";
+    const host = window.location.hostname;
+    const explicit = window.RRS_API_BASE ? String(window.RRS_API_BASE).replace(/\/+$/, "") : "";
+    const pageOrigin = String(window.location.origin || "").replace(/\/+$/, "");
+    if (explicit && (["localhost", "127.0.0.1"].includes(host) || explicit !== pageOrigin)) return explicit;
+    return ["localhost", "127.0.0.1"].includes(host) ? "http://localhost:5000" : fallback;
+})();
+const ROOM_API_BASE_URL = __RRS_BASE + "/api/room";
 
 const heroRoomName = document.getElementById("heroRoomName");
 const heroRoomSubtitle = document.getElementById("heroRoomSubtitle");
@@ -261,11 +268,8 @@ function setQRNotAvailable(message = "QR could not be loaded.") {
 async function generateRoomQr(roomId, roomName) {
     // Spec: only staff/admin may VIEW QR codes.  Backend enforces with 403
     // when a student calls this endpoint; the caller already handles errors.
-    const base  = (typeof window !== "undefined" && window.RRS_API_BASE
-        ? window.RRS_API_BASE
-        : "http://localhost:5000");
     const token = getToken();
-    const response = await fetch(base + "/api/qr/room/" + roomId, {
+    const response = await fetch(__RRS_BASE + "/api/qr/room/" + roomId, {
         headers: token ? { Authorization: "Bearer " + token } : {}
     });
 
@@ -281,11 +285,8 @@ async function generateRoomQr(roomId, roomName) {
 }
 
 async function createRoomQr(roomId) {
-    const base = (typeof window !== "undefined" && window.RRS_API_BASE
-        ? window.RRS_API_BASE
-        : "http://localhost:5000");
     const token = getToken();
-    const response = await fetch(base + "/api/qr/create/" + roomId, {
+    const response = await fetch(__RRS_BASE + "/api/qr/create/" + roomId, {
         method: "POST",
         headers: token ? { Authorization: "Bearer " + token } : {}
     });
