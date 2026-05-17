@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { padding: 0; background: var(--bg); }
+  .header { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; min-height: var(--header-h); background: var(--header-bg); backdrop-filter: blur(18px); border-bottom: 1px solid var(--line); }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .badge { width: 44px; height: 44px; border-radius: 8px; background: #fff; border: 1px solid var(--accent-line); display: inline-flex; align-items: center; justify-content: center; padding: 3px; box-shadow: 0 12px 25px var(--accent-glow); overflow: hidden; }
+  .badge img { width: 100%; height: 100%; object-fit: contain; border-radius: 6px; }
+  .brand .title { font: var(--t-h4); letter-spacing: var(--ls-tight); }
+  .brand .sub   { font: var(--t-small); color: var(--muted); }
+  nav { display: flex; gap: 4px; align-items: center; }
+  .link { padding: 8px 14px; border-radius: 8px; font: var(--t-body-strong); font-size: 14px; color: var(--muted); text-decoration: none; }
+  .link.active { color: var(--accent); background: var(--accent-soft); }
+  .link:hover { color: var(--text); background: var(--hover-bg); }
+  .btn { height: 36px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); font: var(--t-body-strong); font-size: 13px; cursor: pointer; }
+  .body { padding: 18px 24px; color: var(--muted); font: var(--t-small); }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="brand">
+      <span class="badge"><img src="../assets/roomlink-logo.png" alt=""></span>
+      <div>
+        <div class="title">RoomLink</div>
+        <div class="sub">QR‑Integrated University Room Reservation System</div>
+      </div>
+    </div>
+    <nav>
+      <a class="link active" href="#">Rooms</a>
+      <a class="link" href="#">Reserve</a>
+      <a class="link" href="#">My Reservations</a>
+      <a class="link" href="#">Scan QR</a>
+      <button class="btn">Logout</button>
+    </nav>
+  </div>
+  <div class="body">Sticky · 76 px tall · blur 18px · accent‑soft active state · square radii.</div>
+</body>
+</html>

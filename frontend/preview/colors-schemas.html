@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { padding: 20px; }
+  .row { display: grid; gap: 16px; }
+  .scheme { display: grid; grid-template-columns: 110px repeat(4, 1fr); gap: 8px; align-items: center; }
+  .scheme .label { font: var(--t-label); color: var(--text); }
+  .chip-color { height: 56px; border-radius: var(--r-md); border: 1px solid var(--line); display: flex; align-items: flex-end; justify-content: flex-start; padding: 8px; }
+  .chip-color span { font: var(--t-mono); font-size: 10px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.3); }
+  .light span { color: var(--text); text-shadow: none; }
+</style>
+</head>
+<body>
+  <div class="row">
+    <div class="scheme">
+      <div class="label">Emerald</div>
+      <div class="chip-color" style="background:#0b7f75"><span>#0B7F75</span></div>
+      <div class="chip-color" style="background:#06675f"><span>#06675F</span></div>
+      <div class="chip-color light" style="background:#e6f5f2"><span>#E6F5F2</span></div>
+      <div class="chip-color" style="background:#2dd4bf"><span>#2DD4BF</span></div>
+    </div>
+    <div class="scheme">
+      <div class="label">Indigo</div>
+      <div class="chip-color" style="background:#4f46e5"><span>#4F46E5</span></div>
+      <div class="chip-color" style="background:#3730a3"><span>#3730A3</span></div>
+      <div class="chip-color light" style="background:#eef0ff"><span>#EEF0FF</span></div>
+      <div class="chip-color" style="background:#818cf8"><span>#818CF8</span></div>
+    </div>
+    <div class="scheme">
+      <div class="label">Amber</div>
+      <div class="chip-color" style="background:#b45309"><span>#B45309</span></div>
+      <div class="chip-color" style="background:#92400e"><span>#92400E</span></div>
+      <div class="chip-color light" style="background:#fff6e6"><span>#FFF6E6</span></div>
+      <div class="chip-color" style="background:#f59e0b"><span>#F59E0B</span></div>
+    </div>
+    <div class="scheme">
+      <div class="label">Plum</div>
+      <div class="chip-color" style="background:#a21caf"><span>#A21CAF</span></div>
+      <div class="chip-color" style="background:#701a75"><span>#701A75</span></div>
+      <div class="chip-color light" style="background:#faecff"><span>#FAECFF</span></div>
+      <div class="chip-color" style="background:#e879f9"><span>#E879F9</span></div>
+    </div>
+    <div class="scheme">
+      <div class="label">Slate</div>
+      <div class="chip-color" style="background:#1f2937"><span>#1F2937</span></div>
+      <div class="chip-color" style="background:#0b1220"><span>#0B1220</span></div>
+      <div class="chip-color light" style="background:#eef1f4"><span>#EEF1F4</span></div>
+      <div class="chip-color" style="background:#64748b"><span>#64748B</span></div>
+    </div>
+  </div>
+</body>
+</html>

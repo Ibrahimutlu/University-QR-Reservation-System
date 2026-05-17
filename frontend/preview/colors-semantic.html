@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { padding: 24px; }
+  .row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .cell { border: 1px solid var(--line); border-radius: var(--r-md); padding: 14px; background: var(--surface); display: flex; flex-direction: column; gap: 10px; }
+  .dot { width: 22px; height: 22px; border-radius: 50%; }
+  .name { font: var(--t-label); }
+  .hex { font: var(--t-mono); font-size: 11px; color: var(--muted); }
+  .bg { border-radius: var(--r-sm); padding: 8px 10px; font: var(--t-small); font-weight: 500; }
+</style>
+</head>
+<body>
+  <div class="row">
+    <div class="cell">
+      <div style="display:flex;gap:10px;align-items:center"><div class="dot" style="background:#0f7a3a"></div><div><div class="name">success</div><div class="hex">#0F7A3A</div></div></div>
+      <div class="bg" style="background:rgba(15,122,58,.1); color:#0f7a3a">Reservation confirmed</div>
+    </div>
+    <div class="cell">
+      <div style="display:flex;gap:10px;align-items:center"><div class="dot" style="background:#a46400"></div><div><div class="name">warning</div><div class="hex">#A46400</div></div></div>
+      <div class="bg" style="background:rgba(164,100,0,.1); color:#a46400">Pending approval</div>
+    </div>
+    <div class="cell">
+      <div style="display:flex;gap:10px;align-items:center"><div class="dot" style="background:#c81e25"></div><div><div class="name">danger</div><div class="hex">#C81E25</div></div></div>
+      <div class="bg" style="background:rgba(200,30,37,.08); color:#c81e25">Reservation cancelled</div>
+    </div>
+    <div class="cell">
+      <div style="display:flex;gap:10px;align-items:center"><div class="dot" style="background:#1c5dd2"></div><div><div class="name">info</div><div class="hex">#1C5DD2</div></div></div>
+      <div class="bg" style="background:rgba(28,93,210,.08); color:#1c5dd2">Notice</div>
+    </div>
+  </div>
+</body>
+</html>

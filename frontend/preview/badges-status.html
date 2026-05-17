@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { padding: 22px; display: grid; gap: 14px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .label { font: var(--t-label); color: var(--muted); width: 90px; }
+  .group { display: flex; align-items: center; gap: 14px; }
+
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: var(--r-pill); font: var(--t-label); border: 1px solid transparent; }
+  .badge .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .b-success { color: var(--success); background: var(--success-bg); border-color: rgba(15,122,58,.25); }
+  .b-warning { color: var(--warning); background: var(--warning-bg); border-color: rgba(164,100,0,.24); }
+  .b-danger  { color: var(--danger);  background: var(--danger-bg);  border-color: rgba(200,30,37,.24); }
+  .b-info    { color: var(--info);    background: var(--info-bg);    border-color: rgba(28,93,210,.22); }
+  .b-accent  { color: var(--accent);  background: var(--accent-soft); border-color: var(--accent-line); }
+  .b-neutral { color: var(--text-2);  background: var(--surface-2);  border-color: var(--line); }
+</style>
+</head>
+<body>
+  <div class="group"><span class="label">Status</span>
+    <div class="row">
+      <span class="badge b-success"><span class="dot"></span>Confirmed</span>
+      <span class="badge b-success"><span class="dot"></span>Available</span>
+      <span class="badge b-warning"><span class="dot"></span>Pending</span>
+      <span class="badge b-danger"><span class="dot"></span>Cancelled</span>
+      <span class="badge b-danger"><span class="dot"></span>Busy</span>
+      <span class="badge b-info"><span class="dot"></span>Notice</span>
+    </div>
+  </div>
+  <div class="group"><span class="label">Accent</span>
+    <div class="row">
+      <span class="badge b-accent">Room List</span>
+      <span class="badge b-accent">Authentication</span>
+      <span class="badge b-accent">QR Scanner</span>
+      <span class="badge b-accent">Administration</span>
+    </div>
+  </div>
+  <div class="group"><span class="label">Neutral</span>
+    <div class="row">
+      <span class="badge b-neutral">Capacity · 24</span>
+      <span class="badge b-neutral">Floor 3</span>
+      <span class="badge b-neutral">Demo Room</span>
+    </div>
+  </div>
+</body>
+</html>

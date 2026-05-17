@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en" data-scheme="emerald">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RoomLink · Web UI Kit</title>
+<link rel="icon" href="../../assets/roomlink-logo.png" type="image/png">
+<link rel="stylesheet" href="../../colors_and_type.css">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+<style>
+  body { min-height: 100vh; background: var(--bg); }
+  body::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: -1;
+    background: var(--gradient-hero);
+  }
+  .main { width: min(1200px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 80px; }
+  .stack { display: flex; flex-direction: column; gap: 24px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .grid-3 > * { min-width: 0; }
+  @media (max-width: 880px) {
+    .grid-3 { grid-template-columns: 1fr; }
+  }
+  .login-wrap {
+    min-height: calc(100vh - 80px);
+    display: grid; place-items: center;
+    padding: 40px 20px;
+  }
+</style>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="icons.jsx"></script>
+<script type="text/babel" src="StatPill.jsx"></script>
+<script type="text/babel" src="MessageBox.jsx"></script>
+<script type="text/babel" src="Header.jsx"></script>
+<script type="text/babel" src="Hero.jsx"></script>
+<script type="text/babel" src="RoomCard.jsx"></script>
+<script type="text/babel" src="LoginCard.jsx"></script>
+<script type="text/babel" src="ReservationForm.jsx"></script>
+<script type="text/babel" src="ScanPanel.jsx"></script>
+<script type="text/babel" src="ThemeSchemeSwitcher.jsx"></script>
+
+<script type="text/babel">
+const ROOMS = [
+  { id: 1, name: "Conference Hall A", type: "Main lecture hall · North Wing", capacity: 48, location: "Building B · Floor 3", status: "available" },
+  { id: 2, name: "Seminar Room 204",  type: "Seminar room", capacity: 18, location: "Building A · Floor 2", status: "available" },
+  { id: 3, name: "Demo Presentation Room", type: "Free‑form picker · capstones", capacity: 18, location: "Building A · Floor 1", status: "busy" },
+  { id: 4, name: "Study Room 311",    type: "Small group study", capacity: 8,  location: "Library · Floor 3",   status: "available" },
+  { id: 5, name: "Computer Lab C",    type: "Computing lab", capacity: 32, location: "Building C · Floor 1", status: "available" },
+  { id: 6, name: "Workshop Room",     type: "Maker space",    capacity: 14, location: "Building D · Floor 2", status: "busy" },
+];
+
+function App() {
+  const [route, setRoute] = React.useState("login");      // login | rooms | reserve | scan | my
+  const [user, setUser]   = React.useState(null);
+  const [selectedRoom, setSelectedRoom] = React.useState(null);
+  const [reservations, setReservations] = React.useState([]);
+  const [flash, setFlash] = React.useState(null);
+
+  React.useEffect(() => {
+    if (window.lucide) window.lucide.createIcons();
+  });
+
+  function login(info) {
+    setUser({ ...info, label: info.mode === "student" ? `Student #${info.identifier}` : info.identifier });
+    setRoute("rooms");
+    setFlash({ tone: "success", title: "Welcome back", body: "Signed in to RoomLink." });
+  }
+  function logout() { setUser(null); setRoute("login"); }
+  function reserveRoom(room) { setSelectedRoom(room); setRoute("reserve"); }
+  function submitReservation(r) {
+    const room = ROOMS.find(x => x.id === r.roomId);
+    setReservations(prev => [...prev, { ...r, id: Date.now(), room }]);
+    setFlash({ tone: "success", title: "Reservation created",
+               body: `${room.name} · ${r.date}, ${r.slot.start}–${r.slot.end}.` });
+    setRoute("my");
+  }
+
+  if (route === "login") {
+    return (
+      <>
+        <div className="login-wrap">
+          <LoginCard onSubmit={login} />
+        </div>
+        <ThemeSchemeSwitcher />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Header active={route} onNav={setRoute} onLogout={logout} />
+      <main className="main">
+        <div className="stack">
+          {flash && (
+            <MessageBox tone={flash.tone} title={flash.title}>{flash.body}</MessageBox>
+          )}
+
+          {route === "rooms" && (
+            <>
+              <Hero
+                totalRooms={ROOMS.length}
+                available={ROOMS.filter(r => r.status === "available").length}
+                onBrowse={() => document.getElementById("rooms-grid")?.scrollIntoView({ behavior: "smooth" })}
+                onReserve={() => { setSelectedRoom(null); setRoute("reserve"); }} />
+              <section>
+                <div style={{ marginBottom: 12 }}>
+                  <span className="eyebrow">Rooms</span>
+                  <h2 style={{ margin: "6px 0 4px" }}>Available rooms</h2>
+                  <p style={{ color: "var(--muted)" }}>
+                    Choose a room and continue directly to reservation.
+                  </p>
+                </div>
+                <div id="rooms-grid" className="grid-3">
+                  {ROOMS.map(r => (
+                    <RoomCard key={r.id} room={r}
+                              onReserve={reserveRoom}
+                              onDetails={() => alert(`${r.name}\n${r.type}\nCapacity ${r.capacity}\n${r.location}`)} />
+                  ))}
+                </div>
+              </section>
+            </>
+          )}
+
+          {route === "reserve" && (
+            <>
+              <div>
+                <span className="eyebrow">Reservation Form</span>
+                <h2 style={{ margin: "6px 0 4px" }}>Create a new reservation</h2>
+                <p style={{ color: "var(--muted)" }}>
+                  Choose a room, pick a date, and select one available slot.
+                </p>
+              </div>
+              <ReservationForm
+                rooms={ROOMS}
+                defaultRoomId={selectedRoom?.id}
+                onBack={() => setRoute("rooms")}
+                onSubmit={submitReservation} />
+            </>
+          )}
+
+          {route === "scan" && (
+            <>
+              <ScanPanel />
+            </>
+          )}
+
+          {route === "my" && (
+            <>
+              <div>
+                <span className="eyebrow">Your Reservations</span>
+                <h2 style={{ margin: "6px 0 4px" }}>My reservations</h2>
+                <p style={{ color: "var(--muted)" }}>
+                  Upcoming bookings. Scan the room QR to check in on arrival.
+                </p>
+              </div>
+              {reservations.length === 0 ? (
+                <div style={{
+                  border: "1px dashed var(--line-strong)", borderRadius: "var(--r-lg)",
+                  padding: 28, textAlign: "center", background: "var(--surface)",
+                  color: "var(--muted)",
+                }}>
+                  <h4 style={{ color: "var(--text)", margin: 0 }}>No reservations yet</h4>
+                  <p style={{ margin: "6px 0 0" }}>
+                    Browse rooms and pick a slot to get started.
+                  </p>
+                  <button onClick={() => setRoute("rooms")}
+                    style={{ marginTop: 14, border: 0, height: 40, padding: "0 16px",
+                             borderRadius: 10, background: "var(--accent)", color: "#fff",
+                             font: "var(--t-body-strong)", cursor: "pointer",
+                             boxShadow: "var(--shadow-glow)" }}>Browse Rooms</button>
+                </div>
+              ) : (
+                <div className="grid-3">
+                  {reservations.map(r => (
+                    <article key={r.id} style={{
+                      background: "var(--surface)", border: "1px solid var(--line)",
+                      borderRadius: "var(--r-lg)", padding: 18, boxShadow: "var(--shadow-sm)",
+                    }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                        <h3>{r.room.name}</h3>
+                        <StatPill tone="success">Confirmed</StatPill>
+                      </div>
+                      <p style={{ color: "var(--muted)", font: "var(--t-small)", marginTop: 6 }}>
+                        {r.date} · {r.slot.start} – {r.slot.end}
+                      </p>
+                      <p style={{ color: "var(--muted-2)", font: "var(--t-mono)", fontSize: 11, marginTop: 4 }}>
+                        RRS-{String(r.id).slice(-6)}
+                      </p>
+                      <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+                        <button
+                          onClick={() => setRoute("scan")}
+                          style={{ border: 0, height: 36, padding: "0 12px", borderRadius: 10,
+                                   background: "var(--accent)", color: "#fff",
+                                   font: "var(--t-body-strong)", fontSize: 13, cursor: "pointer",
+                                   boxShadow: "var(--shadow-glow)" }}>Check in</button>
+                        <button
+                          onClick={() => setReservations(prev => prev.filter(x => x.id !== r.id))}
+                          style={{ height: 36, padding: "0 12px", borderRadius: 10,
+                                   border: "1px solid var(--line)", background: "var(--surface)",
+                                   color: "var(--text)", font: "var(--t-body-strong)", fontSize: 13,
+                                   cursor: "pointer" }}>Cancel</button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </main>
+      <ThemeSchemeSwitcher />
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+
+</body>
+</html>

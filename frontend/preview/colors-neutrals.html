@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { padding: 24px; }
+  .row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+  .swatch { aspect-ratio: 1.2; border-radius: var(--r-md); border: 1px solid var(--line); padding: 8px; display: flex; flex-direction: column; justify-content: space-between; }
+  .swatch .name { font: var(--t-label); font-size: 10px; color: var(--text); }
+  .swatch .hex { font: var(--t-mono); font-size: 9px; color: var(--muted); }
+</style>
+</head>
+<body>
+  <div class="row">
+    <div class="swatch" style="background:#f6f7f8"><span class="name">bg</span><span class="hex">#F6F7F8</span></div>
+    <div class="swatch" style="background:#fcfcfd"><span class="name">bg-elevated</span><span class="hex">#FCFCFD</span></div>
+    <div class="swatch" style="background:#ffffff"><span class="name">surface</span><span class="hex">#FFFFFF</span></div>
+    <div class="swatch" style="background:#f3f5f6"><span class="name">surface-2</span><span class="hex">#F3F5F6</span></div>
+    <div class="swatch" style="background:#ebeef0"><span class="name">surface-3</span><span class="hex">#EBEEF0</span></div>
+    <div class="swatch" style="background:#e3e7e9"><span class="name">line</span><span class="hex">#E3E7E9</span></div>
+    <div class="swatch" style="background:#cdd4d7"><span class="name">line-strong</span><span class="hex">#CDD4D7</span></div>
+    <div class="swatch" style="background:#8a949a; color:#fff"><span class="name" style="color:#fff">muted-2</span><span class="hex" style="color:#e6eaec">#8A949A</span></div>
+    <div class="swatch" style="background:#657075; color:#fff"><span class="name" style="color:#fff">muted</span><span class="hex" style="color:#cfd3d5">#657075</span></div>
+    <div class="swatch" style="background:#3b4548; color:#fff"><span class="name" style="color:#fff">text-2</span><span class="hex" style="color:#c2c8ca">#3B4548</span></div>
+    <div class="swatch" style="background:#0f1416; color:#fff"><span class="name" style="color:#fff">text</span><span class="hex" style="color:#aab0b3">#0F1416</span></div>
+    <div class="swatch" style="background:#0a0f11; color:#fff"><span class="name" style="color:#fff">bg (dark)</span><span class="hex" style="color:#9aa3a5">#0A0F11</span></div>
+  </div>
+</body>
+</html>

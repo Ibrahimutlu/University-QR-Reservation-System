@@ -1,0 +1,282 @@
+/* ─────────────────────────────────────────────────────────────────
+   RoomLink — Foundations
+   Colors, type, spacing, radii, elevation, motion.
+   The original product shipped a single teal scheme; this revision
+   adds five swappable schemas via `data-scheme` on <html>:
+     emerald (default)  ·  indigo  ·  amber  ·  plum  ·  slate
+   Plus a dark variant via `data-theme="dark"`.
+   ─────────────────────────────────────────────────────────────── */
+
+/* ── Webfonts ─────────────────────────────────────────────────── */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+:root {
+  /* === Type stack ============================================ */
+  --font-sans: "Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Bricolage Grotesque", "Inter", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* === Type scale (semantic) ================================= */
+  --t-display: 700 clamp(2.5rem, 5vw, 4rem) / 1.0 var(--font-display);
+  --t-h1: 700 clamp(1.875rem, 3vw, 2.5rem) / 1.1 var(--font-sans);
+  --t-h2: 650 clamp(1.5rem, 2.2vw, 1.875rem) / 1.18 var(--font-sans);
+  --t-h3: 620 1.125rem / 1.3 var(--font-sans);
+  --t-h4: 620 1rem / 1.35 var(--font-sans);
+  --t-body: 400 1rem / 1.55 var(--font-sans);
+  --t-body-strong: 500 1rem / 1.55 var(--font-sans);
+  --t-small: 400 0.875rem / 1.5 var(--font-sans);
+  --t-label: 600 0.75rem / 1 var(--font-sans);
+  --t-eyebrow: 640 0.72rem / 1 var(--font-sans);   /* uppercase + tracking */
+  --t-mono: 500 0.85rem / 1.5 var(--font-mono);
+
+  /* Letter-spacing tokens */
+  --ls-tight: -0.022em;
+  --ls-display: -0.03em;
+  --ls-eyebrow: 0.08em;
+
+  /* === Spacing (8pt-ish, with 4 + 6 helpers) ================= */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-10: 40px;
+  --s-12: 48px;
+  --s-16: 64px;
+  --s-20: 80px;
+
+  /* === Radii ================================================= */
+  --r-xs: 6px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-xl: 28px;
+  --r-pill: 999px;
+
+  /* === Elevation (light) ===================================== */
+  --shadow-xs: 0 1px 2px rgba(17, 24, 28, 0.04);
+  --shadow-sm: 0 4px 14px rgba(17, 24, 28, 0.05);
+  --shadow-md: 0 12px 30px rgba(17, 24, 28, 0.08);
+  --shadow-lg: 0 22px 54px rgba(17, 24, 28, 0.13);
+  --shadow-glow: 0 18px 50px -10px var(--accent-glow, rgba(11, 127, 117, 0.45));
+
+  /* === Motion ================================================ */
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-spring: cubic-bezier(0.18, 0.82, 0.22, 1);
+  --ease-in: cubic-bezier(0.55, 0, 0.7, 0.2);
+  --dur-fast: 140ms;
+  --dur-base: 220ms;
+  --dur-slow: 420ms;
+
+  /* === Layout ================================================ */
+  --container: 1200px;
+  --container-narrow: 720px;
+  --header-h: 76px;
+
+  /* === Neutrals (light, schema-agnostic) ===================== */
+  --bg: #f6f7f8;
+  --bg-elevated: #fcfcfd;
+  --surface: #ffffff;
+  --surface-2: #f3f5f6;
+  --surface-3: #ebeef0;
+  --line: #e3e7e9;
+  --line-strong: #cdd4d7;
+  --text: #0f1416;
+  --text-2: #3b4548;
+  --muted: #657075;
+  --muted-2: #8a949a;
+  --on-accent: #ffffff;
+
+  /* Semantic status (constant across schemas) */
+  --success: #0f7a3a;
+  --success-bg: rgba(15, 122, 58, 0.1);
+  --warning: #a46400;
+  --warning-bg: rgba(164, 100, 0, 0.1);
+  --danger: #c81e25;
+  --danger-bg: rgba(200, 30, 37, 0.08);
+  --info: #1c5dd2;
+  --info-bg: rgba(28, 93, 210, 0.08);
+
+  /* Glass / overlay */
+  --header-bg: rgba(246, 247, 248, 0.78);
+  --hover-bg: rgba(18, 26, 29, 0.045);
+  --press-bg: rgba(18, 26, 29, 0.08);
+
+  /* === Default schema: Emerald (RoomLink heritage) =========== */
+  --accent: #0b7f75;
+  --accent-strong: #06675f;
+  --accent-soft: rgba(11, 127, 117, 0.1);
+  --accent-line: rgba(11, 127, 117, 0.28);
+  --accent-glow: rgba(11, 127, 117, 0.45);
+  --accent-2: #2dd4bf;     /* highlight */
+  --accent-tint: #e6f5f2;  /* page wash */
+  --gradient-hero: radial-gradient(
+      120% 60% at 10% 0%,
+      rgba(45, 212, 191, 0.18),
+      transparent 60%
+    ),
+    radial-gradient(80% 60% at 100% 0%, rgba(11, 127, 117, 0.14), transparent 65%);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   COLOR SCHEMAS — Modernized palettes
+   Toggle with <html data-scheme="indigo"> etc.
+   ─────────────────────────────────────────────────────────────── */
+:root[data-scheme="indigo"] {
+  --accent: #4f46e5;
+  --accent-strong: #3730a3;
+  --accent-soft: rgba(79, 70, 229, 0.1);
+  --accent-line: rgba(79, 70, 229, 0.28);
+  --accent-glow: rgba(79, 70, 229, 0.45);
+  --accent-2: #818cf8;
+  --accent-tint: #eef0ff;
+  --gradient-hero: radial-gradient(120% 60% at 10% 0%, rgba(129, 140, 248, 0.22), transparent 60%),
+    radial-gradient(80% 60% at 100% 0%, rgba(79, 70, 229, 0.14), transparent 65%);
+}
+
+:root[data-scheme="amber"] {
+  --accent: #b45309;
+  --accent-strong: #92400e;
+  --accent-soft: rgba(180, 83, 9, 0.1);
+  --accent-line: rgba(180, 83, 9, 0.28);
+  --accent-glow: rgba(245, 158, 11, 0.5);
+  --accent-2: #f59e0b;
+  --accent-tint: #fff6e6;
+  --gradient-hero: radial-gradient(120% 60% at 10% 0%, rgba(245, 158, 11, 0.22), transparent 60%),
+    radial-gradient(80% 60% at 100% 0%, rgba(180, 83, 9, 0.14), transparent 65%);
+}
+
+:root[data-scheme="plum"] {
+  --accent: #a21caf;
+  --accent-strong: #701a75;
+  --accent-soft: rgba(162, 28, 175, 0.1);
+  --accent-line: rgba(162, 28, 175, 0.28);
+  --accent-glow: rgba(162, 28, 175, 0.45);
+  --accent-2: #e879f9;
+  --accent-tint: #faecff;
+  --gradient-hero: radial-gradient(120% 60% at 10% 0%, rgba(232, 121, 249, 0.22), transparent 60%),
+    radial-gradient(80% 60% at 100% 0%, rgba(162, 28, 175, 0.14), transparent 65%);
+}
+
+:root[data-scheme="slate"] {
+  --accent: #1f2937;
+  --accent-strong: #0b1220;
+  --accent-soft: rgba(31, 41, 55, 0.08);
+  --accent-line: rgba(31, 41, 55, 0.28);
+  --accent-glow: rgba(31, 41, 55, 0.4);
+  --accent-2: #64748b;
+  --accent-tint: #eef1f4;
+  --gradient-hero: radial-gradient(120% 60% at 10% 0%, rgba(100, 116, 139, 0.18), transparent 60%),
+    radial-gradient(80% 60% at 100% 0%, rgba(31, 41, 55, 0.12), transparent 65%);
+}
+
+/* ── Dark mode (applies on top of any schema) ─────────────────── */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0a0f11;
+  --bg-elevated: #10171a;
+  --surface: #141c20;
+  --surface-2: #1a2429;
+  --surface-3: #222e34;
+  --line: #283339;
+  --line-strong: #3a4750;
+  --text: #f1f5f4;
+  --text-2: #cad3d3;
+  --muted: #97a3a4;
+  --muted-2: #6e7a7d;
+  --header-bg: rgba(10, 15, 17, 0.78);
+  --hover-bg: rgba(255, 255, 255, 0.05);
+  --press-bg: rgba(255, 255, 255, 0.08);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 6px 18px rgba(0, 0, 0, 0.32);
+  --shadow-md: 0 14px 34px rgba(0, 0, 0, 0.38);
+  --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.46);
+  --success: #34c46a;
+  --success-bg: rgba(52, 196, 106, 0.14);
+  --warning: #e3ad48;
+  --warning-bg: rgba(227, 173, 72, 0.14);
+  --danger: #ff6b72;
+  --danger-bg: rgba(255, 107, 114, 0.12);
+  --info: #5b9dff;
+  --info-bg: rgba(91, 157, 255, 0.12);
+}
+
+:root[data-theme="dark"][data-scheme="emerald"],
+:root[data-theme="dark"]:not([data-scheme]) {
+  --accent: #34d3b0;
+  --accent-strong: #6ee9c8;
+  --accent-soft: rgba(52, 211, 176, 0.14);
+  --accent-line: rgba(52, 211, 176, 0.34);
+  --accent-tint: #0f201d;
+}
+:root[data-theme="dark"][data-scheme="indigo"] {
+  --accent: #a5b4fc;
+  --accent-strong: #c7d2fe;
+  --accent-soft: rgba(165, 180, 252, 0.14);
+  --accent-line: rgba(165, 180, 252, 0.34);
+  --accent-tint: #161734;
+}
+:root[data-theme="dark"][data-scheme="amber"] {
+  --accent: #f59e0b;
+  --accent-strong: #fbbf24;
+  --accent-soft: rgba(245, 158, 11, 0.16);
+  --accent-line: rgba(245, 158, 11, 0.36);
+  --accent-tint: #2a1f0e;
+}
+:root[data-theme="dark"][data-scheme="plum"] {
+  --accent: #e879f9;
+  --accent-strong: #f0abfc;
+  --accent-soft: rgba(232, 121, 249, 0.14);
+  --accent-line: rgba(232, 121, 249, 0.34);
+  --accent-tint: #2a1031;
+}
+:root[data-theme="dark"][data-scheme="slate"] {
+  --accent: #cbd5e1;
+  --accent-strong: #e2e8f0;
+  --accent-soft: rgba(203, 213, 225, 0.12);
+  --accent-line: rgba(203, 213, 225, 0.3);
+  --accent-tint: #1a2128;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   ELEMENT DEFAULTS — semantic baseline
+   ─────────────────────────────────────────────────────────────── */
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font: var(--t-body);
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1 { font: var(--t-h1); letter-spacing: var(--ls-tight); margin: 0; }
+h2 { font: var(--t-h2); letter-spacing: var(--ls-tight); margin: 0; }
+h3 { font: var(--t-h3); margin: 0; }
+h4 { font: var(--t-h4); margin: 0; }
+p  { margin: 0; }
+small, .small { font: var(--t-small); color: var(--muted); }
+code, kbd, pre { font: var(--t-mono); }
+
+.display {
+  font: var(--t-display);
+  letter-spacing: var(--ls-display);
+}
+.eyebrow {
+  font: var(--t-eyebrow);
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.muted   { color: var(--muted); }
+.muted-2 { color: var(--muted-2); }
+
+/* Useful primitives */
+.surface  { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); }
+.card     { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow-sm); padding: var(--s-6); }
+.pill     { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: var(--r-pill); font: var(--t-label); }
+.chip     { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--r-pill); border: 1px solid var(--line); background: var(--surface); font: var(--t-small); }

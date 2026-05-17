@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+  body { padding: 18px; display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow-sm); padding: 18px; display: flex; flex-direction: column; gap: 8px; }
+  .card .top { display: flex; align-items: center; justify-content: space-between; }
+  .card h3 { font: var(--t-h3); }
+  .card p  { color: var(--muted); font: var(--t-small); }
+  .meta { display: flex; gap: 14px; color: var(--muted); font: var(--t-small); margin-top: 4px; }
+  .meta i { vertical-align: -2px; margin-right: 4px; }
+  .actions { display: flex; gap: 8px; margin-top: 10px; }
+  .btn { border: 0; height: 36px; padding: 0 14px; border-radius: var(--r-md); font: var(--t-body-strong); font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .primary { background: var(--accent); color: #fff; box-shadow: var(--shadow-glow); }
+  .secondary { background: var(--surface); color: var(--text); border: 1px solid var(--line); }
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: var(--r-pill); font: var(--t-label); }
+  .available { color: var(--success); background: var(--success-bg); }
+  .busy      { color: var(--danger);  background: var(--danger-bg); }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="top">
+      <h3>Conference Hall A</h3>
+      <span class="badge available">Available</span>
+    </div>
+    <p>Main lecture hall · 3rd floor, North Wing</p>
+    <div class="meta">
+      <span><i data-lucide="users" width="14" height="14"></i>48 seats</span>
+      <span><i data-lucide="map-pin" width="14" height="14"></i>Building B</span>
+    </div>
+    <div class="actions">
+      <button class="btn primary">Reserve</button>
+      <button class="btn secondary">Details</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="top">
+      <h3>Demo Presentation Room</h3>
+      <span class="badge busy">Busy</span>
+    </div>
+    <p>Free‑form time picker · capstone demos</p>
+    <div class="meta">
+      <span><i data-lucide="users" width="14" height="14"></i>18 seats</span>
+      <span><i data-lucide="map-pin" width="14" height="14"></i>Building A</span>
+    </div>
+    <div class="actions">
+      <button class="btn secondary" disabled style="opacity:.55">Reserve</button>
+      <button class="btn secondary">Details</button>
+    </div>
+  </div>
+  <script>lucide.createIcons();</script>
+</body>
+</html>

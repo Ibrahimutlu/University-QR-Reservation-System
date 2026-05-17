@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { padding: 24px; }
+  .row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .swatch { border-radius: var(--r-md); height: 96px; padding: 12px; display: flex; flex-direction: column; justify-content: space-between; border: 1px solid var(--line); }
+  .swatch .name { font: var(--t-label); }
+  .swatch .hex  { font: var(--t-mono); font-size: 11px; opacity: .9; }
+  .light-text { color: #fff; }
+</style>
+</head>
+<body>
+  <div class="row">
+    <div class="swatch light-text" style="background:#0b7f75"><span class="name">accent</span><span class="hex">#0B7F75</span></div>
+    <div class="swatch light-text" style="background:#06675f"><span class="name">accent-strong</span><span class="hex">#06675F</span></div>
+    <div class="swatch" style="background:#e6f5f2"><span class="name">accent-tint</span><span class="hex">#E6F5F2</span></div>
+    <div class="swatch light-text" style="background:#2dd4bf"><span class="name">accent-2</span><span class="hex">#2DD4BF</span></div>
+  </div>
+</body>
+</html>

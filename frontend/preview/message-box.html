@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { padding: 20px; display: grid; gap: 12px; }
+  .msg { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); }
+  .msg .icon { width: 28px; height: 28px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; font: 700 14px/1 var(--font-sans); flex: 0 0 auto; }
+  .msg h4 { margin: 0; font: var(--t-h4); }
+  .msg p  { margin: 2px 0 0; color: var(--muted); font: var(--t-small); }
+  .success { border-color: rgba(15,122,58,.3); background: rgba(15,122,58,.06); }
+  .success .icon { background: rgba(15,122,58,.16); color: var(--success); }
+  .warning { border-color: rgba(164,100,0,.34); background: rgba(164,100,0,.06); }
+  .warning .icon { background: rgba(164,100,0,.18); color: var(--warning); }
+  .error   { border-color: rgba(200,30,37,.3); background: rgba(200,30,37,.06); }
+  .error   .icon { background: rgba(200,30,37,.16); color: var(--danger); }
+  .info    { border-color: rgba(28,93,210,.3); background: rgba(28,93,210,.06); }
+  .info    .icon { background: rgba(28,93,210,.16); color: var(--info); }
+</style>
+</head>
+<body>
+  <div class="msg success"><span class="icon">✓</span><div><h4>Reservation created</h4><p>Conference Hall A · today, 14:00 – 16:00.</p></div></div>
+  <div class="msg warning"><span class="icon">!</span><div><h4>Pending check‑in</h4><p>Scan the room QR within 15 minutes to keep your reservation.</p></div></div>
+  <div class="msg error"><span class="icon">!</span><div><h4>Check‑in failed</h4><p>QR is for a different room. Try scanning the correct one.</p></div></div>
+  <div class="msg info"><span class="icon">i</span><div><h4>No new notifications</h4><p>You're up to date.</p></div></div>
+</body>
+</html>
