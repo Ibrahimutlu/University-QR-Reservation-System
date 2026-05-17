@@ -26,7 +26,9 @@ window.Nav = {
       <nav class="topnav">
         <div class="topnav-inner">
           <a href="rooms.html" class="topnav-brand">
-            <span class="topnav-mark">R</span>
+            <span class="topnav-mark">
+              <img src="assets/roomlink-mark.svg" alt="" aria-hidden="true" />
+            </span>
             <span>
               <span class="topnav-title">RoomLink</span>
               <span class="topnav-subtitle">QR Reservation</span>

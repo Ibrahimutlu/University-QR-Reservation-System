@@ -122,17 +122,23 @@ a {
 
 .brand-badge,
 .topnav-mark {
-  width: 32px;
-  height: 32px;
-  border-radius: 11px;
-  background: linear-gradient(155deg, #0a84ff, #1f5de3);
-  color: #fff;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: #0a84ff;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.82rem;
-  font-weight: 700;
   box-shadow: 0 10px 24px rgba(10, 132, 255, 0.36);
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+.brand-badge img,
+.topnav-mark img {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .brand-text h1,
@@ -897,6 +903,17 @@ button:disabled,
   text-align: center;
   display: grid;
   gap: 0.95rem;
+  justify-items: center;
+}
+
+.roomlink-splash-mark {
+  width: 84px;
+  height: 84px;
+  display: block;
+  filter: drop-shadow(0 20px 38px rgba(10, 132, 255, 0.35));
+  opacity: 0;
+  transform: translateY(18px) scale(0.94);
+  animation: roomlinkIn 0.5s ease 0.02s forwards;
 }
 
 .roomlink-word {
@@ -1698,4 +1715,3 @@ button:disabled,
 .checkin-info .info-card .primary-btn {
   display: inline-block;
 }
-
