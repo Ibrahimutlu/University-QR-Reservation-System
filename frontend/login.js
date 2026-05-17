@@ -47,12 +47,12 @@ function runSplash() {
 
     setTimeout(() => {
         splash.classList.add("done");
-    }, 1200);
+    }, 1650);
 
     setTimeout(() => {
         splash.classList.add("hidden");
         sessionStorage.setItem("roomlinkSplashSeen", "1");
-    }, 1700);
+    }, 2100);
 }
 
 function showMessage(type, title, text) {
