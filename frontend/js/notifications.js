@@ -1,32 +1,38 @@
-// Self-contained in-app notifications banner.
+// Self-contained in-app notifications bar.
 //
-// Resolves its own API base + token so it works on every authenticated
-// page, regardless of whether that page already loads config.js / api.js /
-// auth.js. Polls /api/notifications/me every 30s while the tab is visible
-// and renders unread notifications as a sticky banner at the top of <main>.
+// Resolves its own API base + token so it works on every authenticated page.
+// Polls /api/notifications/me every 30s while the tab is visible and renders
+// a sticky status bar at the top of <main>.
 (function () {
   const POLL_MS = 30000;
+  const PROD_API_BASE = "https://university-qr-reservation-system-production.up.railway.app";
 
-  // ── token + API base ────────────────────────────────────────────────
   function token() {
     try {
       return localStorage.getItem("rrs.token") || localStorage.getItem("token") || null;
-    } catch (_) { return null; }
+    } catch (_) {
+      return null;
+    }
   }
+
   if (!token()) return;
 
   function apiBase() {
     if (window.APP_CONFIG && window.APP_CONFIG.API_BASE) return window.APP_CONFIG.API_BASE;
+
     if (window.RRS_API_BASE) {
       const explicit = String(window.RRS_API_BASE).replace(/\/+$/, "");
       const pageOrigin = String(window.location.origin || "").replace(/\/+$/, "");
-      if (["localhost", "127.0.0.1"].includes(window.location.hostname) || explicit !== pageOrigin) {
+      if (isLocalHost(window.location.hostname) || explicit !== pageOrigin) {
         return explicit;
       }
     }
-    const host = window.location.hostname;
-    if (host === "localhost" || host === "127.0.0.1") return "http://localhost:5000";
-    return "https://university-qr-reservation-system-production.up.railway.app";
+
+    return isLocalHost(window.location.hostname) ? "http://localhost:5000" : PROD_API_BASE;
+  }
+
+  function isLocalHost(host) {
+    return host === "localhost" || host === "127.0.0.1";
   }
 
   async function callJson(method, path) {
@@ -37,18 +43,20 @@
         Authorization: "Bearer " + token()
       }
     });
+
     if (!res.ok) throw new Error("HTTP " + res.status);
-    const txt = await res.text();
-    return txt ? JSON.parse(txt) : null;
+
+    const text = await res.text();
+    return text ? JSON.parse(text) : null;
   }
 
-  // ── rendering ───────────────────────────────────────────────────────
   let bannerEl = null;
   let pollTimer = null;
   let lastPayload = [];
 
   function ensureBanner() {
     if (bannerEl && document.body.contains(bannerEl)) return bannerEl;
+
     bannerEl = document.createElement("aside");
     bannerEl.id = "rrs-notifications-banner";
     bannerEl.setAttribute("role", "status");
@@ -57,30 +65,34 @@
       "position:sticky",
       "top:0",
       "z-index:9999",
-      "display:none",
+      "display:flex",
       "flex-direction:column",
       "gap:8px",
       "padding:10px 16px",
-      "background:#fff8ec",
-      "border-bottom:1px solid #f3c97a",
+      "background:#f7fafc",
+      "border-bottom:1px solid #d9e2ec",
       "font-family:inherit",
       "font-size:14px"
     ].join(";");
+
     const main = document.querySelector("main") || document.body;
     main.insertBefore(bannerEl, main.firstChild);
     return bannerEl;
   }
 
-  function severityColor(sev) {
-    switch ((sev || "").toLowerCase()) {
-      case "error":   return { bg: "#fdecea", border: "#e57373", fg: "#7a1414" };
-      case "info":    return { bg: "#e8f1fd", border: "#7aa6e0", fg: "#163b66" };
-      default:        return { bg: "#fff8ec", border: "#f3c97a", fg: "#6a4900" };
+  function severityColor(severity) {
+    switch ((severity || "").toLowerCase()) {
+      case "error":
+        return { bg: "#fdecea", border: "#e57373", fg: "#7a1414" };
+      case "info":
+        return { bg: "#e8f1fd", border: "#7aa6e0", fg: "#163b66" };
+      default:
+        return { bg: "#fff8ec", border: "#f3c97a", fg: "#6a4900" };
     }
   }
 
-  function escapeHtml(s) {
-    return String(s == null ? "" : s)
+  function escapeHtml(value) {
+    return String(value == null ? "" : value)
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
@@ -89,41 +101,80 @@
 
   function render(items) {
     const el = ensureBanner();
-    const visible = (items || [])
+    const unread = (items || [])
       .map(normalizeNotification)
-      .filter(function (n) { return !n.isRead; });
-    if (visible.length === 0) {
-      el.style.display = "none";
-      el.innerHTML = "";
-      return;
-    }
+      .filter(function (item) { return !item.isRead; });
+
     el.style.display = "flex";
     el.innerHTML = "";
-    visible.forEach(function (n) {
-      const tones = severityColor(n.severity);
-      const row = document.createElement("div");
-      row.style.cssText = [
-        "display:flex",
-        "align-items:flex-start",
-        "gap:12px",
-        "padding:8px 12px",
-        "background:" + tones.bg,
-        "border:1px solid " + tones.border,
-        "color:" + tones.fg,
-        "border-radius:6px"
-      ].join(";");
 
-      const msg = document.createElement("div");
-      msg.style.flex = "1";
-      msg.innerHTML =
-        '<strong style="text-transform:uppercase;letter-spacing:0.04em;font-size:11px;display:block;margin-bottom:2px;">'
-        + escapeHtml(n.type) + '</strong>'
-        + '<span>' + escapeHtml(n.message) + '</span>';
+    if (unread.length === 0) {
+      el.appendChild(buildEmptyRow());
+      return;
+    }
 
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.textContent = "Dismiss";
-      btn.style.cssText = [
+    unread.forEach(function (item) {
+      el.appendChild(buildNotificationRow(item));
+    });
+  }
+
+  function buildEmptyRow() {
+    const row = document.createElement("div");
+    row.style.cssText = [
+      "display:flex",
+      "align-items:center",
+      "gap:12px",
+      "padding:8px 12px",
+      "background:#f7fafc",
+      "border:1px solid #d9e2ec",
+      "color:#334e68",
+      "border-radius:6px"
+    ].join(";");
+    row.innerHTML =
+      '<strong style="text-transform:uppercase;letter-spacing:0.04em;font-size:11px;">Notifications</strong>' +
+      '<span>No new notifications</span>';
+    return row;
+  }
+
+  function buildErrorRow(message) {
+    return buildNotificationRow({
+      notificationID: null,
+      type: "Notifications",
+      message: message || "Notifications could not be loaded.",
+      severity: "error",
+      isRead: false
+    });
+  }
+
+  function buildNotificationRow(item) {
+    const tones = severityColor(item.severity);
+    const row = document.createElement("div");
+    row.style.cssText = [
+      "display:flex",
+      "align-items:flex-start",
+      "gap:12px",
+      "padding:8px 12px",
+      "background:" + tones.bg,
+      "border:1px solid " + tones.border,
+      "color:" + tones.fg,
+      "border-radius:6px"
+    ].join(";");
+
+    const message = document.createElement("div");
+    message.style.flex = "1";
+    message.innerHTML =
+      '<strong style="text-transform:uppercase;letter-spacing:0.04em;font-size:11px;display:block;margin-bottom:2px;">' +
+      escapeHtml(item.type) +
+      "</strong><span>" +
+      escapeHtml(item.message) +
+      "</span>";
+    row.appendChild(message);
+
+    if (item.notificationID) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = "Dismiss";
+      button.style.cssText = [
         "background:transparent",
         "color:" + tones.fg,
         "border:1px solid currentColor",
@@ -132,24 +183,25 @@
         "font:inherit",
         "cursor:pointer"
       ].join(";");
-      btn.addEventListener("click", function () { dismiss(n.notificationID); });
+      button.addEventListener("click", function () { dismiss(item.notificationID); });
+      row.appendChild(button);
+    }
 
-      row.appendChild(msg);
-      row.appendChild(btn);
-      el.appendChild(row);
-    });
+    return row;
   }
 
   async function dismiss(id) {
     try {
       await callJson("POST", "/api/notifications/" + id + "/read");
-      lastPayload = lastPayload.map(normalizeNotification).map(function (n) {
-        return n.notificationID === id
-          ? Object.assign({}, n, { isRead: true, readAt: new Date().toISOString() })
-          : n;
+      lastPayload = lastPayload.map(normalizeNotification).map(function (item) {
+        return item.notificationID === id
+          ? Object.assign({}, item, { isRead: true, readAt: new Date().toISOString() })
+          : item;
       });
       render(lastPayload);
-    } catch (_) { /* silent */ }
+    } catch (_) {
+      // Keep the current bar visible; the next poll will reconcile state.
+    }
   }
 
   async function poll() {
@@ -157,22 +209,27 @@
       const data = await callJson("GET", "/api/notifications/me");
       lastPayload = Array.isArray(data) ? data.map(normalizeNotification) : [];
       render(lastPayload);
-    } catch (_) { /* tab/network blip — keep last view */ }
+    } catch (error) {
+      const el = ensureBanner();
+      el.style.display = "flex";
+      el.innerHTML = "";
+      el.appendChild(buildErrorRow(error && error.message));
+    }
   }
 
-  function normalizeNotification(n) {
-    n = n || {};
-    const readAt = n.readAt ?? n.ReadAt ?? null;
+  function normalizeNotification(item) {
+    item = item || {};
+    const readAt = item.readAt ?? item.ReadAt ?? null;
     return {
-      notificationID: n.notificationID ?? n.NotificationID ?? n.id ?? n.ID,
-      userID: n.userID ?? n.UserID,
-      reservationID: n.reservationID ?? n.ReservationID,
-      type: n.type ?? n.Type ?? "Info",
-      message: n.message ?? n.Message ?? "",
-      severity: n.severity ?? n.Severity ?? "warning",
-      createdAt: n.createdAt ?? n.CreatedAt,
+      notificationID: item.notificationID ?? item.NotificationID ?? item.id ?? item.ID,
+      userID: item.userID ?? item.UserID,
+      reservationID: item.reservationID ?? item.ReservationID,
+      type: item.type ?? item.Type ?? "Info",
+      message: item.message ?? item.Message ?? "",
+      severity: item.severity ?? item.Severity ?? "warning",
+      createdAt: item.createdAt ?? item.CreatedAt,
       readAt: readAt,
-      isRead: Boolean(n.isRead ?? n.IsRead ?? readAt)
+      isRead: Boolean(item.isRead ?? item.IsRead ?? readAt)
     };
   }
 
@@ -185,7 +242,10 @@
   }
 
   function stopPolling() {
-    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    if (pollTimer) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
   }
 
   document.addEventListener("visibilitychange", function () {
@@ -194,7 +254,7 @@
 
   window.RrsNotifications = {
     refresh: poll,
-    latest:  function () { return lastPayload.slice(); }
+    latest: function () { return lastPayload.slice(); }
   };
 
   if (document.readyState === "loading") {

@@ -35,7 +35,6 @@ Open <http://localhost:8000>.
 | `index.html`                  | Auto-redirect to `login.html`                        | public              |
 | `login.html`                  | Login page (email + password)                        | public              |
 | `rooms.html`                  | Browse rooms grid                                    | Student/Staff/Admin |
-| `room-details.html`           | Room detail view                                     | Student/Staff/Admin |
 | `reserve.html`                | Booking form (2-hour slots)                          | Student/Staff/Admin |
 | `my-reservations.html`        | List user's bookings                                 | Student/Staff/Admin |
 | `reservation-details.html`    | Reservation detail / cancel / re-schedule            | Student/Staff/Admin |
@@ -74,7 +73,7 @@ Every entry HTML injects this **before** loading any page-specific script:
 ```
 
 The page-specific scripts (`login.js`, `rooms-api.js`, `reserve-new.js`,
-`my-reservations-new.js`, `reservation-details-new.js`, `room-details-new.js`,
+`my-reservations-new.js`, `reservation-details-new.js`,
 `admin-dashboard.js`) read `window.RRS_API_BASE`.
 
 On Vercel, requests go to same-origin `/api/*` first, then are proxied to
@@ -128,8 +127,8 @@ can scan but never see a QR image inside the UI.
 
 The runtime API base lives in two places:
 
-* **Production (Vercel):** inline `window.RRS_API_BASE = window.location.origin`
-  so API calls are same-origin (`/api/*`) and routed by Vercel rewrite proxy.
+* **Production (Vercel):** inline `window.RRS_API_BASE` points directly at
+  the Railway API service.
 * **Local dev:** inline `window.RRS_API_BASE = "http://localhost:5000"` when
   host is `localhost`/`127.0.0.1`.
 * **Shared module fallback:** `js/config.js` still contains Railway fallback for
@@ -157,6 +156,6 @@ build.
 - [html5-qrcode](https://github.com/mebjas/html5-qrcode) — camera-based QR scanning
 
 The team's pages (`login.html`, `rooms.html`, `reserve.html`,
-`my-reservations.html`, `reservation-details.html`, `room-details.html`,
+`my-reservations.html`, `reservation-details.html`,
 `admin-dashboard.html`) use their own per-page CSS files (`login.css`,
 `reserve.css`, etc.) plus the shared `style.css`.
