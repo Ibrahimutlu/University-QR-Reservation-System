@@ -128,12 +128,7 @@ namespace RoomReservationSystem.Controllers
             int userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier).Value);
             var now = DateTime.UtcNow;
 
-            var reservation = _context.Reservations.FirstOrDefault(r =>
-                r.RoomID == roomId &&
-                r.UserID == userId &&
-                r.Status == "Confirmed" &&
-                r.StartTime <= now &&
-                r.EndTime >= now);
+            var reservation = FindScannableReservation(userId, roomId, now);
 
             if (reservation == null)
                 return BadRequest(new
@@ -168,15 +163,10 @@ namespace RoomReservationSystem.Controllers
             if (room == null)
                 return NotFound(new { message = "Room not found" });
 
-            var now = request.ScanTime;
+            var now = request.ScanTime == default ? DateTime.UtcNow : request.ScanTime;
 
             // Check if user has a valid reservation for this room at scan time
-            var reservation = _context.Reservations.FirstOrDefault(r =>
-                r.RoomID == request.RoomID &&
-                r.UserID == request.UserID &&
-                r.Status == "Confirmed" &&
-                r.StartTime <= now &&
-                r.EndTime >= now);
+            var reservation = FindScannableReservation(request.UserID, request.RoomID, now);
 
             bool accessGranted = reservation != null;
 
@@ -234,12 +224,7 @@ namespace RoomReservationSystem.Controllers
             int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
             var now    = DateTime.UtcNow;
 
-            var reservation = _context.Reservations.FirstOrDefault(r =>
-                r.RoomID    == qr.RoomID &&
-                r.UserID    == userId &&
-                r.Status    == "Confirmed" &&
-                r.StartTime <= now &&
-                r.EndTime   >= now);
+            var reservation = FindScannableReservation(userId, qr.RoomID, now);
 
             if (reservation == null)
                 return BadRequest(new
@@ -296,7 +281,7 @@ namespace RoomReservationSystem.Controllers
                 });
 
             var now = DateTime.UtcNow;
-            if (now < reservation.StartTime || now > reservation.EndTime)
+            if (!IsWithinScanWindow(reservation, now))
                 return BadRequest(new
                 {
                     message = "Access denied",
@@ -353,12 +338,7 @@ namespace RoomReservationSystem.Controllers
                 }
             }
 
-            var reservation = _context.Reservations.FirstOrDefault(r =>
-                r.RoomID == body.RoomId &&
-                r.UserID == userId &&
-                (r.Status == "Confirmed" || r.Status == "Active") &&
-                r.StartTime <= now &&
-                r.EndTime >= now);
+            var reservation = FindScannableReservation(userId, body.RoomId, now);
 
             if (reservation == null)
             {
@@ -756,6 +736,48 @@ namespace RoomReservationSystem.Controllers
                 safeRoomName = "ROOM";
 
             return $"ROOM-{room.RoomID}-{safeRoomName}";
+        }
+
+        private Reservation FindScannableReservation(int userId, int roomId, DateTime nowUtc)
+        {
+            var statuses = new[] { "Confirmed", "Active" };
+            return _context.Reservations
+                .Where(r => r.RoomID == roomId &&
+                            r.UserID == userId &&
+                            statuses.Contains(r.Status))
+                .AsEnumerable()
+                .Where(r => IsWithinScanWindow(r, nowUtc))
+                .OrderBy(r => Math.Abs((NormalizeForCompare(r.StartTime) - LocalScanNow(nowUtc)).TotalMinutes))
+                .FirstOrDefault();
+        }
+
+        private static bool IsWithinScanWindow(Reservation reservation, DateTime nowUtc)
+        {
+            int earlyGrace = ParseEnvIntOrDefault("QR_CHECKIN_EARLY_GRACE_MINUTES", 10);
+            int lateGrace  = ParseEnvIntOrDefault("QR_CHECKIN_LATE_GRACE_MINUTES", 10);
+
+            var start = NormalizeForCompare(reservation.StartTime).AddMinutes(-earlyGrace);
+            var end = NormalizeForCompare(reservation.EndTime).AddMinutes(lateGrace);
+
+            return IsBetween(nowUtc, start, end) ||
+                   IsBetween(LocalScanNow(nowUtc), start, end);
+        }
+
+        private static DateTime NormalizeForCompare(DateTime value)
+        {
+            return DateTime.SpecifyKind(value, DateTimeKind.Unspecified);
+        }
+
+        private static DateTime LocalScanNow(DateTime nowUtc)
+        {
+            int offsetHours = ParseEnvIntOrDefault("APP_LOCAL_UTC_OFFSET_HOURS", 3);
+            return DateTime.SpecifyKind(nowUtc.AddHours(offsetHours), DateTimeKind.Unspecified);
+        }
+
+        private static bool IsBetween(DateTime value, DateTime start, DateTime end)
+        {
+            var comparable = NormalizeForCompare(value);
+            return comparable >= start && comparable <= end;
         }
 
         private ScanLog BuildScanLog(

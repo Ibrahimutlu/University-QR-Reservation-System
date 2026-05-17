@@ -41,7 +41,8 @@
 
     if (!response.ok) {
       const message = (data && (data.message || data.error)) || data || response.statusText;
-      throw new Error(typeof message === "string" ? message : JSON.stringify(message));
+      const reason = data && data.reason ? " " + data.reason : "";
+      throw new Error(typeof message === "string" ? message + reason : JSON.stringify(message));
     }
 
     return unwrap(data);
