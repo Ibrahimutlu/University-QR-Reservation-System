@@ -130,17 +130,15 @@ a {
 
 .brand-badge,
 .topnav-mark {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 14px;
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(240, 253, 249, 0.9)),
-    linear-gradient(145deg, rgba(33, 176, 129, 0.16), rgba(12, 113, 165, 0.16));
+  background: #fff;
   border: 1px solid rgba(21, 148, 120, 0.2);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 4px;
+  padding: 2px;
   box-shadow: 0 12px 25px rgba(8, 91, 86, 0.16);
   overflow: hidden;
   flex: 0 0 auto;
@@ -153,6 +151,7 @@ a {
   height: 100%;
   display: block;
   object-fit: contain;
+  border-radius: 11px;
 }
 
 .brand:hover .brand-badge,
@@ -281,8 +280,8 @@ a {
 }
 
 .footer-mark {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -292,6 +291,7 @@ a {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  border-radius: 7px;
 }
 
 .hero-section,
@@ -1017,10 +1017,12 @@ button:disabled,
 }
 
 .roomlink-splash-mark {
-  width: clamp(128px, 22vw, 210px);
-  height: clamp(128px, 22vw, 210px);
+  width: clamp(156px, 24vw, 250px);
+  height: clamp(156px, 24vw, 250px);
   display: block;
   object-fit: contain;
+  border-radius: 28px;
+  background: #fff;
   filter: drop-shadow(0 24px 38px rgba(12, 92, 89, 0.36));
   opacity: 0;
   transform: translateY(18px) scale(0.9) rotateX(8deg);

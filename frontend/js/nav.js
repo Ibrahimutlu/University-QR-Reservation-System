@@ -27,7 +27,7 @@ window.Nav = {
         <div class="topnav-inner">
           <a href="rooms.html" class="topnav-brand">
             <span class="topnav-mark">
-              <img src="assets/roomlink-mark.svg" alt="" aria-hidden="true" />
+              <img src="assets/roomlink-logo.png" alt="" aria-hidden="true" />
             </span>
             <span>
               <span class="topnav-title">RoomLink</span>
