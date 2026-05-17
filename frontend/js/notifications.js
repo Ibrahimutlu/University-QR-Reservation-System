@@ -69,8 +69,9 @@
       "flex-direction:column",
       "gap:8px",
       "padding:10px 16px",
-      "background:#f7fafc",
-      "border-bottom:1px solid #d9e2ec",
+      "background:var(--notice-bg)",
+      "border-bottom:1px solid var(--notice-border)",
+      "color:var(--notice-fg)",
       "font-family:inherit",
       "font-size:14px"
     ].join(";");
@@ -83,11 +84,11 @@
   function severityColor(severity) {
     switch ((severity || "").toLowerCase()) {
       case "error":
-        return { bg: "#fdecea", border: "#e57373", fg: "#7a1414" };
+        return { bg: "var(--notice-error-bg)", border: "var(--notice-error-border)", fg: "var(--notice-error-fg)" };
       case "info":
-        return { bg: "#e8f1fd", border: "#7aa6e0", fg: "#163b66" };
+        return { bg: "var(--notice-info-bg)", border: "var(--notice-info-border)", fg: "var(--notice-info-fg)" };
       default:
-        return { bg: "#fff8ec", border: "#f3c97a", fg: "#6a4900" };
+        return { bg: "var(--notice-warning-bg)", border: "var(--notice-warning-border)", fg: "var(--notice-warning-fg)" };
     }
   }
 
@@ -125,9 +126,9 @@
       "align-items:center",
       "gap:12px",
       "padding:8px 12px",
-      "background:#f7fafc",
-      "border:1px solid #d9e2ec",
-      "color:#334e68",
+      "background:var(--notice-bg)",
+      "border:1px solid var(--notice-border)",
+      "color:var(--notice-fg)",
       "border-radius:6px"
     ].join(";");
     row.innerHTML =

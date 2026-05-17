@@ -53,6 +53,7 @@ window.Nav = {
       </nav>`;
 
     document.getElementById("nav-slot").innerHTML = navHtml;
+    window.dispatchEvent(new CustomEvent("roomlink:navigation-rendered"));
   }
 };
 
