@@ -444,6 +444,12 @@ namespace RoomReservationSystem.Controllers
 
             var scanLog = BuildScanLog(userId, body.RoomId, reservation.ReservationID, "CheckOut", true, now);
             _context.ScanLogs.Add(scanLog);
+            Services.NotificationService.Fire(
+                _context, userId, reservation.ReservationID,
+                Services.NotificationService.Types.ReservationEnded,
+                "Çıkış taramanız alındı. Rezervasyonunuz başarıyla kapatıldı.",
+                Services.NotificationService.Severity.Info,
+                save: false);
             _context.SaveChanges();
 
             return Ok(new
@@ -512,9 +518,16 @@ namespace RoomReservationSystem.Controllers
 
             var scanLog = BuildScanLog(userId, body.RoomId, reservation.ReservationID, "BreakOut", true, now);
             _context.ScanLogs.Add(scanLog);
-            _context.SaveChanges();
 
             int breakLimit = ParseEnvIntOrDefault("BREAK_DURATION_MINUTES", 15);
+            Services.NotificationService.Fire(
+                _context, userId, reservation.ReservationID,
+                Services.NotificationService.Types.BreakStarted,
+                $"Molanız başladı. {breakLimit} dakika içinde geri dönüp tekrar QR taratın.",
+                Services.NotificationService.Severity.Info,
+                save: false);
+            _context.SaveChanges();
+
             return Ok(new
             {
                 message = "Break started",
@@ -607,6 +620,15 @@ namespace RoomReservationSystem.Controllers
                     $"Mola süreniz {breakLimit} dakikayı aştı (yaklaşık {Math.Round(breakMinutes,1)} dk). " +
                     "Bir sonraki molanızda süre limitine dikkat edin.",
                     Services.NotificationService.Severity.Warning,
+                    save: false);
+            }
+            else
+            {
+                Services.NotificationService.Fire(
+                    _context, userId, reservation.ReservationID,
+                    Services.NotificationService.Types.BreakEnded,
+                    $"Molanız sona erdi ({Math.Round(breakMinutes, 1)} dk). Rezervasyonunuz devam ediyor.",
+                    Services.NotificationService.Severity.Info,
                     save: false);
             }
 

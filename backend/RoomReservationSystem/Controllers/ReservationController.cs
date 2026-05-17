@@ -137,6 +137,12 @@ namespace RoomReservationSystem.Controllers
 
                 reservation.QRCodeData = qr.Payload;
                 reservation.UpdatedAt = DateTime.UtcNow;
+                Services.NotificationService.Fire(
+                    _context, reservation.UserID, reservation.ReservationID,
+                    Services.NotificationService.Types.ReservationCreated,
+                    $"Rezervasyonunuz oluşturuldu: {room.RoomName}, {reservation.StartTime:dd.MM.yyyy HH:mm} - {reservation.EndTime:HH:mm}.",
+                    Services.NotificationService.Severity.Info,
+                    save: false);
                 _context.SaveChanges();
 
                 tx.Commit();
@@ -366,6 +372,13 @@ namespace RoomReservationSystem.Controllers
             // Invalidate the reservation and the associated QR payload.
             reservation.Status = "Cancelled";
             reservation.QRCodeData = null;
+            reservation.UpdatedAt = DateTime.UtcNow;
+            Services.NotificationService.Fire(
+                _context, reservation.UserID, reservation.ReservationID,
+                Services.NotificationService.Types.ReservationCancelled,
+                "Rezervasyonunuz iptal edildi.",
+                Services.NotificationService.Severity.Info,
+                save: false);
 
             _context.SaveChanges();
 

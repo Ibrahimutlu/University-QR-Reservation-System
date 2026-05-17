@@ -138,7 +138,10 @@ CREATE TABLE notifications (
     "Type"           VARCHAR(30) NOT NULL
                       CHECK ("Type" IN (
                          'CheckInGraceWarning','Overstay','NoExit',
-                         'BreakOverrun','Expired','NoShow','Info'
+                         'BreakOverrun','Expired','NoShow',
+                         'ReservationCreated','ReservationCancelled',
+                         'ReservationEnded','BreakStarted','BreakEnded',
+                         'Info'
                       )),
     "Message"        TEXT NOT NULL,
     "Severity"       VARCHAR(10) NOT NULL DEFAULT 'warning'

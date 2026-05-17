@@ -115,7 +115,10 @@ CREATE TABLE IF NOT EXISTS notifications (
     ""Type""           VARCHAR(30) NOT NULL
                       CHECK (""Type"" IN (
                          'CheckInGraceWarning','Overstay','NoExit',
-                         'BreakOverrun','Expired','NoShow','Info'
+                         'BreakOverrun','Expired','NoShow',
+                         'ReservationCreated','ReservationCancelled',
+                         'ReservationEnded','BreakStarted','BreakEnded',
+                         'Info'
                       )),
     ""Message""        TEXT NOT NULL,
     ""Severity""       VARCHAR(10) NOT NULL DEFAULT 'warning'
@@ -127,6 +130,32 @@ CREATE TABLE IF NOT EXISTS notifications (
 CREATE INDEX IF NOT EXISTS idx_notifications_user_unread
     ON notifications (""UserID"", ""CreatedAt"" DESC)
     WHERE ""ReadAt"" IS NULL;
+
+DO $$
+DECLARE c record;
+BEGIN
+    FOR c IN
+        SELECT conname
+        FROM pg_constraint
+        WHERE conrelid = 'notifications'::regclass
+          AND contype = 'c'
+          AND pg_get_constraintdef(oid) LIKE '%""Type""%'
+    LOOP
+        EXECUTE format('ALTER TABLE notifications DROP CONSTRAINT IF EXISTS %I', c.conname);
+    END LOOP;
+
+    ALTER TABLE notifications
+        ADD CONSTRAINT notifications_type_check
+        CHECK (""Type"" IN (
+            'CheckInGraceWarning','Overstay','NoExit',
+            'BreakOverrun','Expired','NoShow',
+            'ReservationCreated','ReservationCancelled',
+            'ReservationEnded','BreakStarted','BreakEnded',
+            'Info'
+        ));
+EXCEPTION WHEN undefined_table OR check_violation THEN
+    NULL;
+END $$;
 
 INSERT INTO rooms (""RoomName"", ""RoomType"", ""Capacity"", ""Location"", ""IsAvailable"", ""IsDemoRoom"")
 SELECT 'Demo Presentation Room', 'Demo Room', 30, 'Building 1, Demo Hall', TRUE, TRUE

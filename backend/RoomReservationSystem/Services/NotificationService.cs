@@ -20,6 +20,11 @@ namespace RoomReservationSystem.Services
             public const string BreakOverrun        = "BreakOverrun";
             public const string Expired             = "Expired";
             public const string NoShow              = "NoShow";
+            public const string ReservationCreated  = "ReservationCreated";
+            public const string ReservationCancelled= "ReservationCancelled";
+            public const string ReservationEnded    = "ReservationEnded";
+            public const string BreakStarted        = "BreakStarted";
+            public const string BreakEnded          = "BreakEnded";
             public const string Info                = "Info";
         }
 

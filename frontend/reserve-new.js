@@ -191,7 +191,7 @@ function formatSlotLabel(startTime, endTime) {
 
 function formatRemainingCapacity(slot) {
     if (slot.remainingCapacity === null || slot.remainingCapacity === undefined) {
-        return "Capacity not available";
+        return isSelectedRoomDemo() ? "Capacity checked on submit" : "Capacity not available";
     }
 
     if (Number(slot.remainingCapacity) <= 0) {
@@ -246,18 +246,25 @@ function extractRoomsArray(data) {
 }
 
 function normalizeRoom(room) {
+    const name = room.roomName ?? room.RoomName ?? room.name ?? room.Name ?? "Unknown Room";
+    const type = room.roomType ?? room.RoomType ?? room.type ?? room.Type ?? "Unknown Type";
+    const demoByText = /demo/i.test(`${name} ${type}`);
+
     return {
         id: room.roomID ?? room.RoomID ?? room.id ?? room.ID,
-        name: room.roomName ?? room.RoomName ?? room.name ?? room.Name ?? "Unknown Room",
-        type: room.roomType ?? room.RoomType ?? room.type ?? room.Type ?? "Unknown Type",
+        name,
+        type,
         location: room.location ?? room.Location ?? "Unknown Location",
-        isDemoRoom: Boolean(room.isDemoRoom ?? room.IsDemoRoom ?? false)
+        isDemoRoom: Boolean(room.isDemoRoom ?? room.IsDemoRoom ?? demoByText)
     };
 }
 
 function isSelectedRoomDemo() {
     const room = roomsById.get(String(fields.roomId.value || ""));
-    return Boolean(room && room.isDemoRoom);
+    if (room && room.isDemoRoom) return true;
+
+    const selectedOption = fields.roomId.options[fields.roomId.selectedIndex];
+    return Boolean(selectedOption && /demo/i.test(selectedOption.textContent || ""));
 }
 
 function renderDemoRoomPicker() {
@@ -335,7 +342,10 @@ function populateRoomOptions(rooms) {
     rooms.forEach((room) => {
         const option = document.createElement("option");
         option.value = String(room.id);
-        option.textContent = canViewRoomIds() ? `${room.name} (ID: ${room.id})` : room.name;
+        const demoLabel = room.isDemoRoom ? " - Demo Room" : "";
+        option.textContent = canViewRoomIds()
+            ? `${room.name} (ID: ${room.id})${demoLabel}`
+            : `${room.name}${demoLabel}`;
         fields.roomId.appendChild(option);
     });
 
@@ -453,9 +463,11 @@ function isFutureSlot(slot) {
 }
 
 function isSlotFull(slot) {
+    const hasCapacity = slot.remainingCapacity !== null && slot.remainingCapacity !== undefined;
+
     return (
         slot.isAvailable === false ||
-        Number(slot.remainingCapacity) <= 0 ||
+        (hasCapacity && Number(slot.remainingCapacity) <= 0) ||
         String(slot.status || "").toLowerCase() === "full"
     );
 }
@@ -629,7 +641,7 @@ function validateForm() {
         isValid = false;
     }
 
-    if (selectedSlot && isSlotFull(selectedSlot)) {
+    if (selectedSlot && !isSelectedRoomDemo() && isSlotFull(selectedSlot)) {
         showError("slot", "This time slot is fully booked. Please choose another slot.");
         isValid = false;
     }
@@ -787,4 +799,3 @@ loadRoomOptions()
         updatePreview();
     });
 slotsMessage.textContent = "Choose a room and reservation date to load available slots.";
-
