@@ -10,8 +10,11 @@ const __RRS_BASE = (typeof window !== "undefined" && window.RRS_API_BASE
 
 const ROOM_API_BASE_URL    = __RRS_BASE + "/api/room";
 const QR_DYNAMIC_BASE_URL  = __RRS_BASE + "/api/qr/dynamic";
+const QR_HEALTH_BASE_URL   = __RRS_BASE + "/api/qr/health";
 
 const POLL_INTERVAL_MS     = 15 * 1000;
+const HEALTH_INTERVAL_MS   = 60 * 1000;
+const DRIFT_WARN_SECONDS   = 30; // client/server clock drift threshold
 const ROTATION_WINDOW_SEC  = 120; // backend QRService uses 2-minute buckets
 
 const grid       = document.getElementById("qrMonitorGrid");
@@ -20,6 +23,7 @@ const logoutBtn  = document.getElementById("logoutBtn");
 
 let rooms = [];
 let pollTimer = null;
+let healthTimer = null;
 let countdownTimer = null;
 
 // ─── Auth helpers ───────────────────────────────────────────────
@@ -97,6 +101,7 @@ function renderRoomCards(roomList) {
             </div>
             <div class="countdown-row">
                 Next rotation in&nbsp;<strong data-role="countdown">--:--</strong>
+                <span data-role="drift" class="drift-badge hidden" style="margin-left:8px;padding:2px 6px;border-radius:4px;font-size:11px;background:#fdecea;color:#7a1414;border:1px solid #e57373;"></span>
             </div>
             <div class="error-banner hidden" data-role="error"></div>
         `;
@@ -143,6 +148,33 @@ async function refreshAllRooms() {
     await Promise.all(Array.from(cards).map(refreshRoomQR));
 }
 
+async function checkRoomHealth(card) {
+    const roomId = card.dataset.roomId;
+    const driftEl = card.querySelector('[data-role="drift"]');
+    if (!driftEl) return;
+    try {
+        const h = await apiGet(`${QR_HEALTH_BASE_URL}/${roomId}`);
+        const serverUtcMs = new Date(h.serverUtcNow).getTime();
+        const clientUtcMs = Date.now();
+        const driftSec    = Math.round((clientUtcMs - serverUtcMs) / 1000);
+
+        if (Math.abs(driftSec) > DRIFT_WARN_SECONDS) {
+            driftEl.textContent = `CLOCK DRIFT ${driftSec > 0 ? "+" : ""}${driftSec}s`;
+            driftEl.classList.remove("hidden");
+        } else {
+            driftEl.classList.add("hidden");
+            driftEl.textContent = "";
+        }
+    } catch (_) {
+        // Health endpoint may be 403 for non-admin or unreachable — silent.
+    }
+}
+
+async function checkAllHealth() {
+    const cards = grid.querySelectorAll(".qr-monitor-card");
+    await Promise.all(Array.from(cards).map(checkRoomHealth));
+}
+
 // ─── Countdown — synced to 2-minute server windows ──────────────
 function updateCountdown() {
     const remaining =
@@ -170,9 +202,11 @@ async function init() {
     if (!rooms.length) return;
 
     await refreshAllRooms();
+    await checkAllHealth();
     updateCountdown();
 
     pollTimer      = setInterval(refreshAllRooms, POLL_INTERVAL_MS);
+    healthTimer    = setInterval(checkAllHealth, HEALTH_INTERVAL_MS);
     countdownTimer = setInterval(updateCountdown, 1000);
 }
 
@@ -186,6 +220,7 @@ if (logoutBtn) {
         localStorage.removeItem("rrs.userId");
         localStorage.removeItem("rrs.email");
         if (pollTimer)      clearInterval(pollTimer);
+        if (healthTimer)    clearInterval(healthTimer);
         if (countdownTimer) clearInterval(countdownTimer);
         window.location.href = "login.html";
     });
@@ -193,6 +228,7 @@ if (logoutBtn) {
 
 window.addEventListener("beforeunload", () => {
     if (pollTimer)      clearInterval(pollTimer);
+    if (healthTimer)    clearInterval(healthTimer);
     if (countdownTimer) clearInterval(countdownTimer);
 });
 

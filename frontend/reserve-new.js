@@ -244,8 +244,76 @@ function normalizeRoom(room) {
         id: room.roomID ?? room.RoomID ?? room.id ?? room.ID,
         name: room.roomName ?? room.RoomName ?? room.name ?? room.Name ?? "Unknown Room",
         type: room.roomType ?? room.RoomType ?? room.type ?? room.Type ?? "Unknown Type",
-        location: room.location ?? room.Location ?? "Unknown Location"
+        location: room.location ?? room.Location ?? "Unknown Location",
+        isDemoRoom: Boolean(room.isDemoRoom ?? room.IsDemoRoom ?? false)
     };
+}
+
+function isSelectedRoomDemo() {
+    const room = roomsById.get(String(fields.roomId.value || ""));
+    return Boolean(room && room.isDemoRoom);
+}
+
+function renderDemoRoomPicker() {
+    const date = fields.reservationDate.value;
+    slotsContainer.innerHTML = "";
+    resetSelectedSlot();
+
+    slotsMessage.innerHTML =
+        '<strong>Demo Presentation Room</strong> — choose any start and end time. ' +
+        'The two-hour slot grid does not apply.';
+
+    const wrap = document.createElement("div");
+    wrap.style.cssText = "display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;";
+
+    function field(label, type, id) {
+        const col = document.createElement("label");
+        col.style.cssText = "display:flex;flex-direction:column;gap:4px;font-size:13px;";
+        col.textContent = label;
+        const input = document.createElement("input");
+        input.type = type;
+        input.id = id;
+        input.style.cssText = "padding:8px;border:1px solid #ccc;border-radius:6px;font:inherit;";
+        col.appendChild(input);
+        return { col, input };
+    }
+
+    const startF = field("Start time", "time", "demoStartTime");
+    const endF   = field("End time",   "time", "demoEndTime");
+
+    function recompute() {
+        const s = startF.input.value;
+        const e = endF.input.value;
+        if (!date || !s || !e) {
+            resetSelectedSlot();
+            return;
+        }
+        if (e <= s) {
+            errors.slot.textContent = "End time must be after start time.";
+            resetSelectedSlot();
+            return;
+        }
+        errors.slot.textContent = "";
+        selectedSlot = {
+            startTime: s,
+            endTime: e,
+            startDateTime: `${date}T${s}:00`,
+            endDateTime:   `${date}T${e}:00`,
+            isAvailable: true,
+            remainingCapacity: null,
+            status: "Available"
+        };
+        fields.startTime.value = selectedSlot.startDateTime;
+        fields.endTime.value   = selectedSlot.endDateTime;
+        updatePreview();
+    }
+
+    startF.input.addEventListener("change", recompute);
+    endF.input.addEventListener("change", recompute);
+
+    wrap.appendChild(startF.col);
+    wrap.appendChild(endF.col);
+    slotsContainer.appendChild(wrap);
 }
 
 function populateRoomOptions(rooms) {
@@ -480,6 +548,12 @@ async function loadAvailableSlots() {
 
     if (!date) {
         slotsMessage.textContent = "Choose a reservation date to load time slots.";
+        return;
+    }
+
+    // Demo rooms bypass the 2-hour slot grid entirely.
+    if (isSelectedRoomDemo()) {
+        renderDemoRoomPicker();
         return;
     }
 

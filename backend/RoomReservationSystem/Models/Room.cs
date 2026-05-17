@@ -24,6 +24,12 @@ namespace RoomReservationSystem.Models
 
         public bool IsAvailable { get; set; } = true;
 
+        // Flagged rooms (typically the dedicated "Demo Presentation Room")
+        // bypass the 2-hour slot grid, the even-hour start rule, and the
+        // one-active-reservation-per-student rule. Capacity is still
+        // enforced.
+        public bool IsDemoRoom { get; set; } = false;
+
         public string QRCode { get; set; }
 
        

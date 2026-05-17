@@ -28,14 +28,19 @@ namespace RoomReservationSystem.Models
 
         public string Status { get; set; } = "Pending";
 
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-        public DateTime UpdatedAt { get; set; } = DateTime.Now;
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
         // JSON payload encoded inside the QR code generated when the
         // reservation is confirmed. Used by the QR validation endpoint
         // to authorise check-in.
         public string QRCodeData { get; set; }
+
+        // Denormalized snapshot of rooms.IsDemoRoom at the moment the
+        // reservation was created. Lets the partial unique index that
+        // enforces one-active-per-student exclude demo bookings.
+        public bool IsDemoReservation { get; set; } = false;
 
         public User User { get; set; }
 

@@ -42,8 +42,10 @@
 
         <div class="scan-mode-toggle reveal delay-1" aria-label="Scan mode">
           <button id="checkinModeBtn" class="active" type="button" data-mode="checkin">Check In</button>
+          <button id="breakModeBtn" type="button" data-mode="break">Start Break</button>
           <button id="checkoutModeBtn" type="button" data-mode="checkout">Check Out</button>
         </div>
+        <p id="breakHint" class="scan-mode-hint reveal delay-1"></p>
 
         <article class="scanner-frame reveal delay-2">
           <div id="reader"></div>
@@ -68,5 +70,6 @@
   <script src="js/auth.js"></script>
   <script src="js/api.js"></script>
   <script src="js/scan.js"></script>
+  <script src="js/notifications.js"></script>
 </body>
 </html>

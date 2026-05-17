@@ -298,6 +298,9 @@ async function loadReservationsForUser(userId) {
     }
 
     if (!response.ok) {
+        if (response.status === 403) {
+            throw new Error("You do not have permission to view these reservations.");
+        }
         const errorMessage =
             typeof data === "string"
                 ? data

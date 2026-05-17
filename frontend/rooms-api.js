@@ -61,6 +61,7 @@ function normalizeRoom(room) {
         capacity,
         location: room.location ?? room.Location ?? "Unknown Location",
         isAvailable,
+        isDemoRoom: Boolean(room.isDemoRoom ?? room.IsDemoRoom ?? false),
         status: isAvailable ? "Available" : "Unavailable"
     };
 }
@@ -172,10 +173,15 @@ function createRoomCard(room) {
         ? `<span class="room-id">Room ID: ${room.id}</span>`
         : "";
 
+    const demoBadge = room.isDemoRoom
+        ? '<span class="room-status" style="margin-left:6px;background:#e9f5ff;color:#0a4a78;border:1px solid #7aa6e0;">Demo Room — book any time</span>'
+        : "";
+
     article.innerHTML = `
     <div class="room-header">
       ${roomIdBadge}
       <span class="room-status status-available">${room.status}</span>
+      ${demoBadge}
     </div>
 
     <h3>${room.name}</h3>
@@ -184,6 +190,7 @@ function createRoomCard(room) {
       <p><strong>Room Type:</strong> ${room.type}</p>
       <p><strong>Total Capacity:</strong> ${room.capacity}</p>
       <p><strong>Location:</strong> ${room.location}</p>
+      ${room.isDemoRoom ? '<p><strong>Booking:</strong> Free-form (any start time, any duration)</p>' : ''}
     </div>
 
     <div class="room-actions">

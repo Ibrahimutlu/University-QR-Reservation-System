@@ -101,7 +101,7 @@ namespace RoomReservationSystem.Controllers
             if (room == null)
                 return NotFound("Room does not exist in the system");
 
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow;
 
             // Count active bookings at current time
             int currentBookings = _context.Reservations.Count(r =>

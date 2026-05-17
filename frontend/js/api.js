@@ -85,17 +85,26 @@
     cancelReservation: (id) => request("PUT", `/api/reservation/cancel/${id}`),
     updateReservation: (id, payload) => request("PUT", `/api/reservation/update/${id}`, { body: payload }),
     warnings: () => request("GET", "/api/reservation/warnings"),
+    activeReservation: () => request("GET", "/api/reservation/active"),
 
     // QR
     roomQr: (roomId) => request("GET", `/api/qr/room/${roomId}`),
     createRoomQr: (roomId) => request("POST", `/api/qr/create/${roomId}`),
     dynamicQr: (roomId) => request("GET", `/api/qr/dynamic/${roomId}`),
     rotateRoomQr: (roomId) => request("POST", `/api/qr/rotate/${roomId}`),
+    qrHealth: (roomId) => request("GET", `/api/qr/health/${roomId}`),
     validateRoomQR: (qrCodeValue) => request("GET", "/api/qr/validate", { query: { qrCodeValue } }),
     validateDynamicQR: (qrValue, roomId) => request("GET", "/api/qr/validate-dynamic", { query: { qrValue, roomId } }),
     validateReservationQR: (payload) => request("POST", "/api/qr/validate-reservation", { body: { payload } }),
     scan: (payload) => request("POST", "/api/qr/scan", { body: payload }),
     checkIn: (payload) => request("POST", "/api/qr/check-in", { body: payload }),
-    checkOut: (payload) => request("POST", "/api/qr/check-out", { body: payload })
+    checkOut: (payload) => request("POST", "/api/qr/check-out", { body: payload }),
+    breakOut: (payload) => request("POST", "/api/qr/break-out", { body: payload }),
+    breakIn: (payload) => request("POST", "/api/qr/break-in", { body: payload }),
+
+    // Notifications
+    notifications: () => request("GET", "/api/notifications/me"),
+    markNotificationRead: (id) => request("POST", `/api/notifications/${id}/read`),
+    markAllNotificationsRead: () => request("POST", "/api/notifications/read-all")
   };
 })();

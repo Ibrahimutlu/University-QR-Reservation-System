@@ -126,7 +126,7 @@ namespace RoomReservationSystem.Controllers
                 return BadRequest(new { message = "QR code is invalid or expired" });
 
             int userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier).Value);
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow;
 
             var reservation = _context.Reservations.FirstOrDefault(r =>
                 r.RoomID == roomId &&
@@ -232,7 +232,7 @@ namespace RoomReservationSystem.Controllers
                 return NotFound(new { message = "QR code not found or inactive" });
 
             int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-            var now    = DateTime.Now;
+            var now    = DateTime.UtcNow;
 
             var reservation = _context.Reservations.FirstOrDefault(r =>
                 r.RoomID    == qr.RoomID &&
@@ -295,7 +295,7 @@ namespace RoomReservationSystem.Controllers
                     reason  = "Reservation is not in 'Confirmed' state"
                 });
 
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow;
             if (now < reservation.StartTime || now > reservation.EndTime)
                 return BadRequest(new
                 {
@@ -330,7 +330,7 @@ namespace RoomReservationSystem.Controllers
                 return BadRequest(new { message = "RoomId is required" });
 
             int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow;
             int? scanLogId = null;
 
             // Validate QR token if provided.  Accept both static QRCodeValue
@@ -402,7 +402,7 @@ namespace RoomReservationSystem.Controllers
                 return BadRequest(new { message = "RoomId is required" });
 
             int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow;
             int? scanLogId = null;
 
             if (!string.IsNullOrEmpty(body.QrValue))
@@ -456,6 +456,182 @@ namespace RoomReservationSystem.Controllers
         }
 
         // ──────────────────────────────────────────────────────────────────
+        // POST /api/qr/break-out
+        //   Body: { qrValue, roomId }
+        //   Transitions a CheckedIn reservation to OnBreak. Writes a
+        //   BreakOut scan log. The slot is held; the student is expected
+        //   to scan back in within BREAK_DURATION_MINUTES (default 15).
+        // ──────────────────────────────────────────────────────────────────
+        [HttpPost("break-out")]
+        [Authorize(Roles = "Student,Staff,Admin")]
+        public IActionResult BreakOut([FromBody] CheckInRequest body)
+        {
+            if (body == null || body.RoomId <= 0)
+                return BadRequest(new { message = "RoomId is required" });
+
+            int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var now = DateTime.UtcNow;
+            int? scanLogId = null;
+
+            if (!string.IsNullOrEmpty(body.QrValue))
+            {
+                bool dynamicOk = _qrService.ValidateDynamicQRValue(body.RoomId, body.QrValue);
+                bool staticOk = _context.QRCodes.Any(q =>
+                    q.RoomID == body.RoomId &&
+                    q.QRCodeValue == body.QrValue &&
+                    q.IsActive);
+                if (!dynamicOk && !staticOk)
+                {
+                    scanLogId = RecordScanAttempt(userId, body.RoomId, null, "BreakOut", false, now);
+                    return BadRequest(new
+                    {
+                        message = "QR code is invalid or expired",
+                        scanLogID = scanLogId
+                    });
+                }
+            }
+
+            var reservation = _context.Reservations.FirstOrDefault(r =>
+                r.RoomID == body.RoomId &&
+                r.UserID == userId &&
+                r.Status == "CheckedIn");
+
+            if (reservation == null)
+            {
+                scanLogId = RecordScanAttempt(userId, body.RoomId, null, "BreakOut", false, now);
+                return BadRequest(new
+                {
+                    message = "Cannot start break",
+                    reason = "You must be checked in to start a break",
+                    scanLogID = scanLogId
+                });
+            }
+
+            reservation.Status = "OnBreak";
+            reservation.UpdatedAt = now;
+
+            var scanLog = BuildScanLog(userId, body.RoomId, reservation.ReservationID, "BreakOut", true, now);
+            _context.ScanLogs.Add(scanLog);
+            _context.SaveChanges();
+
+            int breakLimit = ParseEnvIntOrDefault("BREAK_DURATION_MINUTES", 15);
+            return Ok(new
+            {
+                message = "Break started",
+                reservationID = reservation.ReservationID,
+                scanLogID = scanLog.ScanLogID,
+                status = reservation.Status,
+                breakLimitMinutes = breakLimit,
+                breakStartedAt = now
+            });
+        }
+
+        // ──────────────────────────────────────────────────────────────────
+        // POST /api/qr/break-in
+        //   Body: { qrValue, roomId }
+        //   Transitions an OnBreak reservation back to CheckedIn. Writes a
+        //   BreakIn scan log. If the break exceeded BREAK_DURATION_MINUTES
+        //   the response carries a breakOverrun flag (Phase 3 will fire a
+        //   notification in addition to the flag).
+        // ──────────────────────────────────────────────────────────────────
+        [HttpPost("break-in")]
+        [Authorize(Roles = "Student,Staff,Admin")]
+        public IActionResult BreakIn([FromBody] CheckInRequest body)
+        {
+            if (body == null || body.RoomId <= 0)
+                return BadRequest(new { message = "RoomId is required" });
+
+            int userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var now = DateTime.UtcNow;
+            int? scanLogId = null;
+
+            if (!string.IsNullOrEmpty(body.QrValue))
+            {
+                bool dynamicOk = _qrService.ValidateDynamicQRValue(body.RoomId, body.QrValue);
+                bool staticOk = _context.QRCodes.Any(q =>
+                    q.RoomID == body.RoomId &&
+                    q.QRCodeValue == body.QrValue &&
+                    q.IsActive);
+                if (!dynamicOk && !staticOk)
+                {
+                    scanLogId = RecordScanAttempt(userId, body.RoomId, null, "BreakIn", false, now);
+                    return BadRequest(new
+                    {
+                        message = "QR code is invalid or expired",
+                        scanLogID = scanLogId
+                    });
+                }
+            }
+
+            var reservation = _context.Reservations.FirstOrDefault(r =>
+                r.RoomID == body.RoomId &&
+                r.UserID == userId &&
+                r.Status == "OnBreak");
+
+            if (reservation == null)
+            {
+                scanLogId = RecordScanAttempt(userId, body.RoomId, null, "BreakIn", false, now);
+                return BadRequest(new
+                {
+                    message = "Cannot end break",
+                    reason = "No active break in progress for this room",
+                    scanLogID = scanLogId
+                });
+            }
+
+            int breakLimit = ParseEnvIntOrDefault("BREAK_DURATION_MINUTES", 15);
+            var latestBreakOut = _context.ScanLogs
+                .Where(s => s.ReservationID == reservation.ReservationID &&
+                            s.ScanType == "BreakOut" &&
+                            s.AccessGranted)
+                .OrderByDescending(s => s.ScanTime)
+                .Select(s => (DateTime?)s.ScanTime)
+                .FirstOrDefault();
+
+            double breakMinutes = latestBreakOut.HasValue
+                ? (now - latestBreakOut.Value).TotalMinutes
+                : 0;
+            bool overrun = breakMinutes > breakLimit;
+
+            reservation.Status = "CheckedIn";
+            reservation.UpdatedAt = now;
+
+            var scanLog = BuildScanLog(userId, body.RoomId, reservation.ReservationID, "BreakIn", true, now);
+            _context.ScanLogs.Add(scanLog);
+
+            if (overrun)
+            {
+                Services.NotificationService.Fire(
+                    _context, userId, reservation.ReservationID,
+                    Services.NotificationService.Types.BreakOverrun,
+                    $"Mola süreniz {breakLimit} dakikayı aştı (yaklaşık {Math.Round(breakMinutes,1)} dk). " +
+                    "Bir sonraki molanızda süre limitine dikkat edin.",
+                    Services.NotificationService.Severity.Warning,
+                    save: false);
+            }
+
+            _context.SaveChanges();
+
+            return Ok(new
+            {
+                message = overrun ? "Break ended (limit exceeded)" : "Break ended",
+                reservationID = reservation.ReservationID,
+                scanLogID = scanLog.ScanLogID,
+                status = reservation.Status,
+                breakDurationMinutes = Math.Round(breakMinutes, 1),
+                breakLimitMinutes = breakLimit,
+                breakOverrun = overrun
+            });
+        }
+
+        private static int ParseEnvIntOrDefault(string name, int fallback)
+        {
+            var raw = System.Environment.GetEnvironmentVariable(name);
+            if (int.TryParse(raw, out var n) && n > 0) return n;
+            return fallback;
+        }
+
+        // ──────────────────────────────────────────────────────────────────
         // POST /api/qr/rotate/{roomId}
         //   Force-rotate the active QR token for a room (admin only).
         // ──────────────────────────────────────────────────────────────────
@@ -479,6 +655,38 @@ namespace RoomReservationSystem.Controllers
                 qrValue = fresh,
                 qrImage = SafeGenerateQrImage(fresh),
                 rotatedAt = DateTime.UtcNow
+            });
+        }
+
+        // ──────────────────────────────────────────────────────────────────
+        // GET /api/qr/health/{roomId}
+        //   Diagnostic endpoint — returns the server's view of the current
+        //   rotating QR for a room, the rotation interval, the acceptance
+        //   tolerance, and the server's UTC clock. Used by qr-monitor.html
+        //   to detect client/server clock drift, and by the smoke-test
+        //   script before demos.
+        // ──────────────────────────────────────────────────────────────────
+        [HttpGet("health/{roomId}")]
+        [Authorize(Roles = "Staff,Admin")]
+        public IActionResult GetQRHealth(int roomId)
+        {
+            var room = _context.Rooms.FirstOrDefault(r => r.RoomID == roomId);
+            if (room == null)
+                return NotFound(new { message = "Room does not exist" });
+
+            var health = _qrService.GetDynamicQRHealth(roomId);
+            return Ok(new
+            {
+                roomID                  = room.RoomID,
+                roomName                = room.RoomName,
+                serverUtcNow            = health.ServerUtcNow,
+                currentBucketStart      = health.CurrentBucketStart,
+                nextRotationAt          = health.NextRotationAt,
+                nextRotationInSeconds   = health.NextRotationInSeconds,
+                rotationIntervalMinutes = health.RotationIntervalMinutes,
+                acceptanceWindowCount   = health.AcceptanceWindowCount,
+                acceptanceToleranceMin  = health.AcceptanceToleranceMin,
+                currentQRValue          = health.CurrentQRValue
             });
         }
 

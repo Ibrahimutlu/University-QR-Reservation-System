@@ -69,6 +69,10 @@ namespace RoomReservationSystem
             services.AddScoped<JwtService>();
             services.AddSingleton<QRService>();
 
+            // Background sweep: turns dashboard-on-read warnings into
+            // always-on enforcement (expired/no-show/no-exit/break-overrun).
+            services.AddHostedService<ReservationSweepService>();
+
             // ─── JWT ─────────────────────────────────────────────────────
             // Secret resolution order:
             //   1. environment variable JWT_SECRET

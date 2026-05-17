@@ -18,20 +18,22 @@ ON CONFLICT ("UserID") DO NOTHING;
 -- ─── Rooms ───────────────────────────────────────────────────────────────────
 -- Spec: 3 rooms (A/B/C) reservable in 2-hour slots.
 -- Capacity 1 means one booking per slot (the simplest model for the demo).
-INSERT INTO rooms ("RoomID", "RoomName", "RoomType",   "Capacity", "Location",   "IsAvailable")
+INSERT INTO rooms ("RoomID", "RoomName",                 "RoomType",         "Capacity", "Location",                "IsAvailable", "IsDemoRoom")
 VALUES
-    (1, 'Room A', 'Study Room', 1, 'Building 1, Floor 1', TRUE),
-    (2, 'Room B', 'Study Room', 1, 'Building 1, Floor 2', TRUE),
-    (3, 'Room C', 'Study Room', 1, 'Building 2, Floor 1', TRUE)
+    (1, 'Room A',                  'Study Room',        1,  'Building 1, Floor 1',     TRUE,  FALSE),
+    (2, 'Room B',                  'Study Room',        1,  'Building 1, Floor 2',     TRUE,  FALSE),
+    (3, 'Room C',                  'Study Room',        1,  'Building 2, Floor 1',     TRUE,  FALSE),
+    (4, 'Demo Presentation Room',  'Demo Room',         30, 'Building 1, Demo Hall',   TRUE,  TRUE)
 ON CONFLICT ("RoomID") DO NOTHING;
 
 -- ─── QR codes ────────────────────────────────────────────────────────────────
 -- Initial token; controllers will rotate Token / ExpiresAt as needed.
 INSERT INTO qr_codes ("RoomID", "QRCodeValue", "Token", "ExpiresAt", "IsActive")
 VALUES
-    (1, 'ROOM-1-A', 'ROOM-1-A-INIT', CURRENT_TIMESTAMP + INTERVAL '2 minutes', TRUE),
-    (2, 'ROOM-2-B', 'ROOM-2-B-INIT', CURRENT_TIMESTAMP + INTERVAL '2 minutes', TRUE),
-    (3, 'ROOM-3-C', 'ROOM-3-C-INIT', CURRENT_TIMESTAMP + INTERVAL '2 minutes', TRUE)
+    (1, 'ROOM-1-A',    'ROOM-1-A-INIT',    CURRENT_TIMESTAMP + INTERVAL '2 minutes', TRUE),
+    (2, 'ROOM-2-B',    'ROOM-2-B-INIT',    CURRENT_TIMESTAMP + INTERVAL '2 minutes', TRUE),
+    (3, 'ROOM-3-C',    'ROOM-3-C-INIT',    CURRENT_TIMESTAMP + INTERVAL '2 minutes', TRUE),
+    (4, 'ROOM-4-DEMO', 'ROOM-4-DEMO-INIT', CURRENT_TIMESTAMP + INTERVAL '2 minutes', TRUE)
 ON CONFLICT ("RoomID") DO NOTHING;
 
 -- ─── Sequences ───────────────────────────────────────────────────────────────

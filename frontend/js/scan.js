@@ -6,15 +6,20 @@ const manualBtn = document.getElementById("manual-btn");
 const manualEl = document.getElementById("manual");
 const resultEl = document.getElementById("result");
 const modeButtons = Array.from(document.querySelectorAll(".scan-mode-toggle button"));
+const breakBtn = document.getElementById("breakModeBtn");
+const breakHint = document.getElementById("breakHint");
 const logoutBtn = document.getElementById("logoutBtn");
 const adminNavLink = document.getElementById("adminNavLink");
+
+const VALID_MODES = ["checkin", "break", "checkout"];
 
 let html5QrCode = null;
 let scanning = false;
 let currentMode = "checkin";
+let currentReservationStatus = null;
 
 function activeMode() {
-  return currentMode === "checkout" ? "checkout" : "checkin";
+  return VALID_MODES.includes(currentMode) ? currentMode : "checkin";
 }
 
 function setupDashboardLink() {
@@ -34,10 +39,45 @@ function canViewRoomIds() {
 }
 
 function setMode(mode) {
-  currentMode = mode === "checkout" ? "checkout" : "checkin";
+  currentMode = VALID_MODES.includes(mode) ? mode : "checkin";
   modeButtons.forEach((button) => {
     button.classList.toggle("active", button.dataset.mode === currentMode);
   });
+}
+
+function updateBreakButtonLabel() {
+  if (!breakBtn) return;
+  if (currentReservationStatus === "OnBreak") {
+    breakBtn.textContent = "End Break";
+  } else {
+    breakBtn.textContent = "Start Break";
+  }
+}
+
+function updateBreakHint() {
+  if (!breakHint) return;
+  if (!currentReservationStatus) {
+    breakHint.textContent = "";
+    return;
+  }
+  if (currentReservationStatus === "CheckedIn") {
+    breakHint.textContent = "Tip: scan with 'Start Break' to step out for up to 15 minutes without losing your slot.";
+  } else if (currentReservationStatus === "OnBreak") {
+    breakHint.textContent = "You are currently on break. Scan with 'End Break' to resume your session.";
+  } else {
+    breakHint.textContent = "";
+  }
+}
+
+async function refreshReservationStatus() {
+  try {
+    const active = await Api.activeReservation();
+    currentReservationStatus = active && active.status ? active.status : null;
+  } catch {
+    currentReservationStatus = null;
+  }
+  updateBreakButtonLabel();
+  updateBreakHint();
 }
 
 function extractRoomIdFromText(text) {
@@ -111,15 +151,31 @@ async function routePayload(text) {
   const payload = { roomId, qrValue };
 
   if (mode === "checkin") {
-    return normalizeSuccessData(await Api.checkIn(payload));
+    const res = normalizeSuccessData(await Api.checkIn(payload));
+    await refreshReservationStatus();
+    return res;
   }
 
-  return normalizeSuccessData(await Api.checkOut(payload));
+  if (mode === "break") {
+    const op = currentReservationStatus === "OnBreak" ? Api.breakIn : Api.breakOut;
+    const raw = await op(payload);
+    await refreshReservationStatus();
+    return normalizeSuccessData(raw);
+  }
+
+  const res = normalizeSuccessData(await Api.checkOut(payload));
+  await refreshReservationStatus();
+  return res;
 }
 
 function showSuccess(res) {
-  const isCheckIn = activeMode() === "checkin";
-  const actionLabel = isCheckIn ? "Access Granted" : "Check-Out Complete";
+  const mode = activeMode();
+  let actionLabel = "Operation Successful";
+  if (mode === "checkin") actionLabel = "Access Granted";
+  else if (mode === "checkout") actionLabel = "Check-Out Complete";
+  else if (mode === "break") {
+    actionLabel = currentReservationStatus === "CheckedIn" ? "Break Ended" : "Break Started";
+  }
   const roomText = canViewRoomIds() && res.roomID ? `Room #${res.roomID}` : "Room confirmed";
   const timeText = new Date().toLocaleString();
 
@@ -154,15 +210,26 @@ window.scanReset = function () {
   manualEl.value = "";
 };
 
+function showValidating() {
+  resultEl.innerHTML = `
+    <div class="access-result" style="background:#f4f6fb;border:1px solid #b9c5de;color:#243b66;">
+      <div class="result-icon">…</div>
+      <h3>Validating QR</h3>
+      <p>Checking your scan with the server.</p>
+    </div>`;
+}
+
 async function handleScanned(text) {
   if (!scanning) return;
   scanning = false;
-  await stopCamera();
+  showValidating();
 
   try {
     const response = await routePayload(text);
+    await stopCamera();
     showSuccess(response);
   } catch (err) {
+    await stopCamera();
     showError(err.message || "Unexpected scan error.");
   }
 }
@@ -226,3 +293,4 @@ if (logoutBtn) {
 
 setupDashboardLink();
 setMode("checkin");
+refreshReservationStatus();

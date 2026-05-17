@@ -28,9 +28,10 @@ namespace RoomReservationSystem.Controllers
             new[] { 8, 10, 12, 14, 16, 18, 20 };
 
         // "Live" statuses that count as an active reservation against the
-        // single-active-per-student rule.
+        // single-active-per-student rule. OnBreak is included so the slot
+        // stays held while a student is on their 15-minute break.
         private static readonly string[] ActiveStatuses =
-            new[] { "Pending", "Confirmed", "Active", "CheckedIn" };
+            new[] { "Pending", "Confirmed", "Active", "CheckedIn", "OnBreak" };
 
         [HttpPost("create")]
         [Authorize(Roles = "Student,Staff,Admin")]
@@ -42,21 +43,31 @@ namespace RoomReservationSystem.Controllers
             if (reservation.EndTime <= reservation.StartTime)
                 return BadRequest("End time must be after start time");
 
+            // Resolve the target room first so we can branch on IsDemoRoom.
+            var room = _context.Rooms.FirstOrDefault(r => r.RoomID == reservation.RoomID);
+            if (room == null)
+                return NotFound("Room does not exist in the system");
+
             // ── 2-hour slot rule ──────────────────────────────────────────
-            // The slot must be exactly two hours long, start on an even hour
-            // between 08:00 and 20:00 inclusive, and have zero minutes.
-            var duration = reservation.EndTime - reservation.StartTime;
-            if (duration != TimeSpan.FromHours(2))
-                return BadRequest("Reservations must be exactly 2 hours long");
+            // Standard rooms must be exactly two hours long, start on an
+            // even hour between 08:00 and 20:00 inclusive, and have zero
+            // minutes. Demo rooms bypass this entire block so presenters
+            // can reserve a free-form window at any time.
+            if (!room.IsDemoRoom)
+            {
+                var duration = reservation.EndTime - reservation.StartTime;
+                if (duration != TimeSpan.FromHours(2))
+                    return BadRequest("Reservations must be exactly 2 hours long");
 
-            if (reservation.StartTime.Minute != 0 || reservation.StartTime.Second != 0)
-                return BadRequest("Reservation start time must be on the hour");
+                if (reservation.StartTime.Minute != 0 || reservation.StartTime.Second != 0)
+                    return BadRequest("Reservation start time must be on the hour");
 
-            if (System.Array.IndexOf(AllowedSlotStartHours, reservation.StartTime.Hour) < 0)
-                return BadRequest(
-                    "Reservation must start on an even hour between 08:00 and 20:00");
+                if (System.Array.IndexOf(AllowedSlotStartHours, reservation.StartTime.Hour) < 0)
+                    return BadRequest(
+                        "Reservation must start on an even hour between 08:00 and 20:00");
+            }
 
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow;
 
             // Normalize date from start time (Swagger/frontend may pass
             // a different ReservationDate value).
@@ -74,10 +85,6 @@ namespace RoomReservationSystem.Controllers
             if (userRole != "Admin" && reservation.UserID != loggedInUserId)
                 return BadRequest("You can only create a reservation for yourself");
 
-            var room = _context.Rooms.FirstOrDefault(r => r.RoomID == reservation.RoomID);
-            if (room == null)
-                return NotFound("Room does not exist in the system");
-
             var user = _context.Users.FirstOrDefault(u => u.UserID == reservation.UserID);
             if (user == null)
                 return NotFound("User does not exist in the system");
@@ -85,15 +92,19 @@ namespace RoomReservationSystem.Controllers
             // ── Single-active-reservation rule ────────────────────────────
             // Admins may book on behalf of a student that has nothing live;
             // students cannot have any other live reservation regardless of
-            // its time window.
-            bool hasActive = _context.Reservations.Any(r =>
-                r.UserID == reservation.UserID &&
-                ActiveStatuses.Contains(r.Status));
+            // its time window. Demo rooms are exempt — students can book
+            // a demo slot in addition to their regular study slot.
+            if (!room.IsDemoRoom)
+            {
+                bool hasActive = _context.Reservations.Any(r =>
+                    r.UserID == reservation.UserID &&
+                    ActiveStatuses.Contains(r.Status));
 
-            if (hasActive)
-                return BadRequest(
-                    "This student already has an active reservation. " +
-                    "Only one active reservation is allowed per student.");
+                if (hasActive)
+                    return BadRequest(
+                        "This student already has an active reservation. " +
+                        "Only one active reservation is allowed per student.");
+            }
 
             // ── Overlap detection (room) ─────────────────────────────────
             int overlaps = _context.Reservations.Count(r =>
@@ -110,8 +121,9 @@ namespace RoomReservationSystem.Controllers
             try
             {
                 reservation.Status = "Confirmed";
-                reservation.CreatedAt = DateTime.Now;
-                reservation.UpdatedAt = DateTime.Now;
+                reservation.IsDemoReservation = room.IsDemoRoom;
+                reservation.CreatedAt = DateTime.UtcNow;
+                reservation.UpdatedAt = DateTime.UtcNow;
 
                 _context.Reservations.Add(reservation);
                 _context.SaveChanges();
@@ -124,7 +136,7 @@ namespace RoomReservationSystem.Controllers
                     reservation.EndTime);
 
                 reservation.QRCodeData = qr.Payload;
-                reservation.UpdatedAt = DateTime.Now;
+                reservation.UpdatedAt = DateTime.UtcNow;
                 _context.SaveChanges();
 
                 tx.Commit();
@@ -382,7 +394,7 @@ namespace RoomReservationSystem.Controllers
             if (request.EndTime <= request.StartTime)
                 return BadRequest("End time must be after start time");
 
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow;
             var requestedReservationDate = request.StartTime.Date;
 
             if (request.StartTime.Date < now.Date)
@@ -469,7 +481,7 @@ namespace RoomReservationSystem.Controllers
         {
             int loggedInUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
             int grace = ParseEnvIntOrDefault("CHECKIN_GRACE_PERIOD_MINUTES", 15);
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow;
 
             // Pull every "live" reservation owned by this user.
             var live = _context.Reservations
@@ -499,13 +511,20 @@ namespace RoomReservationSystem.Controllers
                     // window finished without a check-in -> mark NoShow
                     r.Status = "NoShow";
                     r.UpdatedAt = now;
+                    string noShowMsg = "Rezervasyon penceresi sona erdi ve giris yapilmadi. " +
+                                       "Rezervasyon NoShow olarak isaretlendi.";
+                    Services.NotificationService.Fire(
+                        _context, r.UserID, r.ReservationID,
+                        Services.NotificationService.Types.NoShow,
+                        noShowMsg,
+                        Services.NotificationService.Severity.Warning,
+                        save: false);
                     warnings.Add(new
                     {
                         kind = "no_show",
                         reservationID = r.ReservationID,
                         roomID = r.RoomID,
-                        message = "Rezervasyon penceresi sona erdi ve giris yapilmadi. " +
-                                  "Rezervasyon NoShow olarak isaretlendi."
+                        message = noShowMsg
                     });
                     continue;
                 }
@@ -517,30 +536,86 @@ namespace RoomReservationSystem.Controllers
                     // grace exhausted -> Expired and free the slot
                     r.Status = "Expired";
                     r.UpdatedAt = now;
+                    string expiredMsg = "Giris suresi doldu. Rezervasyon iptal edildi.";
+                    Services.NotificationService.Fire(
+                        _context, r.UserID, r.ReservationID,
+                        Services.NotificationService.Types.Expired,
+                        expiredMsg,
+                        Services.NotificationService.Severity.Warning,
+                        save: false);
                     warnings.Add(new
                     {
                         kind = "expired",
                         reservationID = r.ReservationID,
                         roomID = r.RoomID,
-                        message = "Giris suresi doldu. Rezervasyon iptal edildi."
+                        message = expiredMsg
                     });
                 }
                 else
                 {
+                    string graceMsg = "Rezervasyon saatiniz basladi ancak QR girisiniz yapilmadi. " +
+                                      "Lutfen calisma alanina giris yapmak icin QR kodu taratin.";
+                    Services.NotificationService.Fire(
+                        _context, r.UserID, r.ReservationID,
+                        Services.NotificationService.Types.CheckInGraceWarning,
+                        graceMsg,
+                        Services.NotificationService.Severity.Info,
+                        save: false);
                     warnings.Add(new
                     {
                         kind = "missing_checkin",
                         reservationID = r.ReservationID,
                         roomID = r.RoomID,
                         graceMinutesRemaining = (int)(grace - elapsed),
-                        message = "Rezervasyon saatiniz basladi ancak QR girisiniz yapilmadi. " +
-                                  "Lutfen calisma alanina giris yapmak icin QR kodu taratin."
+                        message = graceMsg
                     });
                 }
             }
 
             _context.SaveChanges();
             return Ok(warnings);
+        }
+
+        // ─────────────────────────────────────────────────────────────────
+        // GET /api/reservation/active
+        //   Returns the caller's currently active reservation (one of the
+        //   "live" statuses) or null. Used by the scanner page to decide
+        //   whether to show "Start Break" or "End Break" on the Break
+        //   button.
+        // ─────────────────────────────────────────────────────────────────
+        [HttpGet("active")]
+        [Authorize(Roles = "Student,Staff,Admin")]
+        public IActionResult GetActiveReservation()
+        {
+            int loggedInUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier).Value);
+            var now = DateTime.UtcNow;
+
+            var active = _context.Reservations
+                .Where(r => r.UserID == loggedInUserId &&
+                            ActiveStatuses.Contains(r.Status) &&
+                            r.EndTime >= now)
+                .OrderBy(r => r.StartTime)
+                .Select(r => new
+                {
+                    r.ReservationID,
+                    r.UserID,
+                    r.RoomID,
+                    r.StartTime,
+                    r.EndTime,
+                    r.Status,
+                    Room = new
+                    {
+                        r.Room.RoomID,
+                        r.Room.RoomName,
+                        r.Room.Location
+                    }
+                })
+                .FirstOrDefault();
+
+            if (active == null)
+                return Ok((object)null);
+
+            return Ok(active);
         }
 
         private static int ParseEnvIntOrDefault(string name, int fallback)
