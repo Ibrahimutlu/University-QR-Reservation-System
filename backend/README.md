@@ -1,159 +1,116 @@
-# Backend — Room Reservation API
+# Backend - RoomLink API
 
-ASP.NET Core 5.0 Web API with JWT authentication, EF Core (Npgsql), and
-QR generation via QRCoder.
+ASP.NET Core 5 Web API for authentication, room management, reservations,
+QR scanning, break mode, and in-app notifications.
 
----
-
-## Run
-
-The simplest way is from the **repo root**:
-
-```bat
-..\start-demo.bat
-```
-
-Or, manually:
+## Run Locally
 
 ```powershell
-$env:Path = "C:\Program Files\dotnet;" + $env:Path
-cd RoomReservationSystem
+cd backend\RoomReservationSystem
 dotnet restore
 dotnet run
 ```
 
-URLs:
+Default local URLs:
 
-| URL                                  | What                  |
-|--------------------------------------|-----------------------|
-| <http://localhost:5000/swagger>      | Swagger UI            |
-| <http://localhost:5000>              | API base (HTTP)       |
-| <https://localhost:5001>             | API base (HTTPS, prod)|
+- API: http://localhost:5000
+- Swagger: http://localhost:5000/swagger
+- Health: http://localhost:5000/health
 
-> `global.json` pins the SDK to **5.0.408** so newer SDKs don't pick up the
-> EOL `net5.0` framework with warnings or compatibility breaks.
+`global.json` pins the SDK to 5.0.408.
 
----
+## Main Services
 
-## Project layout
+| File | Purpose |
+|---|---|
+| `Controllers/AuthenticationController.cs` | Login and admin student registration |
+| `Controllers/RoomController.cs` | Room list, status, slots, room CRUD |
+| `Controllers/ReservationController.cs` | Create/cancel/update/list reservations and warning sync |
+| `Controllers/QRController.cs` | Static QR, dynamic QR, check-in/out, break-in/out, QR health |
+| `Controllers/NotificationController.cs` | In-app notification feed and read actions |
+| `Services/QRService.cs` | QR image generation and dynamic QR validation |
+| `Services/NotificationService.cs` | Idempotent notification writes |
+| `Services/ReservationSweepService.cs` | Background expired/no-show/no-exit/break-overrun sweep |
+| `Services/SchemaRepairService.cs` | Safe production schema repair on startup |
 
-```
-backend/
-├── global.json
-├── RoomReservationSystem.sln
-└── RoomReservationSystem/
-    ├── Controllers/
-    │   ├── AuthenticationController.cs   POST /api/auth/login
-    │   ├── RoomController.cs             /api/room/*
-    │   ├── ReservationController.cs      /api/reservation/*
-    │   └── QRController.cs               /api/qr/*
-    ├── Models/
-    │   └── User · Room · Reservation · QR · LoginRequest
-    ├── Services/
-    │   ├── JwtService.cs                 HMAC-SHA256, 7-day expiry
-    │   └── QRService.cs                  base64 PNG generator
-    ├── Data/AppDbContext.cs              EF Core, snake_case table mapping
-    ├── Program.cs · Startup.cs
-    ├── appsettings.json
-    └── RoomReservationSystem.csproj
-```
+## Key Endpoints
 
----
+| Method | Path | Auth |
+|---|---|---|
+| POST | `/api/auth/login` | Public staff/admin |
+| POST | `/api/auth/student-login` | Public student |
+| POST | `/api/auth/register` | Admin |
+| GET | `/api/room` | Student/Staff/Admin |
+| GET | `/api/room/status/{roomId}` | Student/Staff/Admin |
+| GET | `/api/room/available-slots/{roomId}?date=YYYY-MM-DD` | Student/Staff/Admin |
+| POST | `/api/reservation/create` | Student/Staff/Admin |
+| GET | `/api/reservation/active` | Student/Staff/Admin |
+| GET | `/api/reservation/warnings` | Student/Staff/Admin |
+| GET | `/api/reservation/user/{userId}` | Owner/Admin |
+| PUT | `/api/reservation/cancel/{id}` | Owner/Admin |
+| POST | `/api/qr/check-in` | Student/Staff/Admin |
+| POST | `/api/qr/break-out` | Student/Staff/Admin |
+| POST | `/api/qr/break-in` | Student/Staff/Admin |
+| POST | `/api/qr/check-out` | Student/Staff/Admin |
+| GET | `/api/qr/dynamic/{roomId}` | Staff/Admin |
+| GET | `/api/qr/health/{roomId}` | Staff/Admin |
+| POST | `/api/qr/rotate/{roomId}` | Admin |
+| GET | `/api/notifications/me` | Student/Staff/Admin |
+| POST | `/api/notifications/{id}/read` | Student/Staff/Admin |
+| POST | `/api/notifications/read-all` | Student/Staff/Admin |
 
-## Endpoints
+## Reservation Rules
 
-| Method | Path                                            | Auth                     |
-|--------|-------------------------------------------------|--------------------------|
-| POST   | `/api/auth/login`                               | Public                   |
-| GET    | `/api/room`                                     | Student / Staff / Admin  |
-| GET    | `/api/room/status/{roomId}`                     | Student / Staff / Admin  |
-| GET    | `/api/room/available-slots/{roomId}?date=…`     | Student / Staff / Admin  |
-| POST   | `/api/room/add`                                 | Admin                    |
-| PUT    | `/api/room/update/{roomId}`                     | Admin                    |
-| DELETE | `/api/room/delete/{roomId}`                     | Admin                    |
-| POST   | `/api/reservation/create`                       | Student / Staff / Admin  |
-| GET    | `/api/reservation/{id}`                         | Owner or Admin           |
-| GET    | `/api/reservation/user/{userId}`                | Owner or Admin           |
-| PUT    | `/api/reservation/cancel/{id}`                  | Owner or Admin           |
-| GET    | `/api/qr/room/{roomId}`                         | Student / Staff / Admin  |
-| GET    | `/api/qr/validate?qrCodeValue=…`                | Student / Staff / Admin  |
-| POST   | `/api/qr/validate-reservation`                  | Student / Staff / Admin  |
+- Standard rooms must be reserved in exact 2-hour slots starting at 08:00,
+  10:00, 12:00, 14:00, 16:00, 18:00, or 20:00.
+- `IsDemoRoom=true` rooms bypass the 2-hour slot rule and the
+  one-active-reservation-per-user rule, but capacity is still enforced.
+- Live statuses that hold capacity are `Pending`, `Confirmed`, `Active`,
+  `CheckedIn`, and `OnBreak`.
+- `OnBreak` keeps the slot held until the user scans back in or the
+  reservation ends.
 
----
+## QR Flow
 
-## QR flow
+Staff/admin can display room QR codes. Students scan the QR from `scan.html`.
 
-### 1. Per-reservation QR (the user's screen)
+Accepted QR scan sources:
 
-When a reservation is created, `QRService.GenerateReservationQR(...)`
-serialises the booking context to JSON:
+- Static room QR value, for example `ROOM-1-ROOMA`
+- Dynamic rotating room QR value, for example `DYN-1-...`
+- Reservation QR JSON payload
 
-```json
-{
-  "type":"reservation",
-  "reservationId":42,
-  "roomId":1,
-  "userId":1,
-  "validFrom":"...",
-  "validUntil":"...",
-  "issuedAt":"..."
-}
-```
+The scan endpoints check:
 
-The payload is stored in `reservations.QRCodeData` and the rendered base64 PNG
-is returned in the response. The frontend displays it on **My Bookings → View QR**.
+1. QR value is valid.
+2. The caller has a matching reservation for the room.
+3. The reservation status and time window allow the requested action.
 
-To validate one (e.g. when scanning a student's phone) the scanner sends:
+Scan time matching compares both UTC and app-local time. The local offset is
+controlled by `APP_LOCAL_UTC_OFFSET_HOURS`, default `3`.
 
-```http
-POST /api/qr/validate-reservation
-Content-Type: application/json
-Authorization: Bearer <token>
+## Notifications
 
-{ "payload": "<the-JSON-string-encoded-in-the-QR>" }
-```
+Notifications are stored in `notifications` and returned by
+`GET /api/notifications/me`.
 
-### 2. Per-room "door sticker" QR
+Current notification types:
 
-Each room has a static QR (`qr_codes.QRCodeValue`, e.g. `ROOM-1-LAB101`).
-`GET /api/qr/room/{roomId}` returns:
+- `ReservationCreated`
+- `ReservationCancelled`
+- `ReservationEnded`
+- `BreakStarted`
+- `BreakEnded`
+- `BreakOverrun`
+- `CheckInGraceWarning`
+- `Expired`
+- `NoShow`
+- `NoExit`
+- `Info`
 
-```json
-{
-  "roomID": 1,
-  "roomName": "Lab 101",
-  "qrCodeValue": "ROOM-1-LAB101",
-  "qrImage": "data:image/png;base64,..."
-}
-```
+## Production Schema Repair
 
-The frontend uses this to render the printable card at `print-qr.html?room=1`.
-
-To validate a door scan:
-
-```http
-GET /api/qr/validate?qrCodeValue=ROOM-1-LAB101
-Authorization: Bearer <token>
-```
-
-The backend looks up the QR, then verifies the caller has a current
-**Confirmed** reservation for that room.
-
----
-
-## Configuration
-
-`appsettings.json`:
-
-```json
-{
-  "ConnectionStrings": {
-    "DefaultConnection":
-      "Host=localhost;Database=RoomReservationDB;Username=postgres;Password=postgres;Port=5432"
-  },
-  "JwtSettings": { "Secret": "...", "ExpiryInDays": 7 }
-}
-```
-
-For production, override these with environment variables (see `.env.example`
-at the repo root). Never commit production secrets.
+`SchemaRepairService` runs on backend startup. It adds missing final-submission
+columns/tables/check constraints on older Railway databases without dropping
+data. Do not use `database/schema.sql` in production unless a full reset is
+intended.

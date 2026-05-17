@@ -106,8 +106,8 @@ namespace RoomReservationSystem.Services
                         NotificationService.Fire(
                             db, r.UserID, r.ReservationID,
                             NotificationService.Types.NoExit,
-                            "Rezervasyon süreniz doldu ve çıkış taraması yapılmadı. " +
-                            "Sistem oturumunuzu otomatik kapattı.",
+                            "Your reservation ended and no check-out scan was recorded. " +
+                            "The system closed your room session automatically.",
                             NotificationService.Severity.Warning,
                             save: false);
                     }
@@ -119,8 +119,8 @@ namespace RoomReservationSystem.Services
                     NotificationService.Fire(
                         db, r.UserID, r.ReservationID,
                         NotificationService.Types.NoShow,
-                        "Rezervasyon penceresi sona erdi ve giriş yapılmadı. " +
-                        "Rezervasyon NoShow olarak işaretlendi.",
+                        "The reservation window ended without a check-in. " +
+                        "The reservation was marked as NoShow.",
                         NotificationService.Severity.Warning,
                         save: false);
                 }
@@ -150,7 +150,7 @@ namespace RoomReservationSystem.Services
                 NotificationService.Fire(
                     db, r.UserID, r.ReservationID,
                     NotificationService.Types.Expired,
-                    "Giriş süreniz doldu. Rezervasyon iptal edildi.",
+                    "The check-in grace period expired. The reservation was closed.",
                     NotificationService.Severity.Warning,
                     save: false);
             }
@@ -178,8 +178,8 @@ namespace RoomReservationSystem.Services
                     NotificationService.Fire(
                         db, r.UserID, r.ReservationID,
                         NotificationService.Types.BreakOverrun,
-                        $"Mola süreniz {breakLimit} dakikayı aştı. " +
-                        "Lütfen çalışma alanına dönüp tekrar QR taratın.",
+                        $"Your break exceeded the {breakLimit}-minute limit. " +
+                        "Please return to the room and scan the QR again.",
                         NotificationService.Severity.Warning,
                         save: false);
                 }

@@ -1,95 +1,89 @@
 # Database
 
-PostgreSQL 14+ schema for RoomLink.
+PostgreSQL schema and seed data for RoomLink.
 
-> The repo-root **`start-demo.bat`** applies these scripts automatically.
-> The instructions below are for manual setup or CI.
-
----
+Important: `schema.sql` drops and recreates all tables. Use it only for a
+fresh local database or an intentional reset. Production Railway databases are
+updated incrementally by backend `SchemaRepairService`.
 
 ## Files
 
-| File              | Purpose                                                                                       |
-|-------------------|-----------------------------------------------------------------------------------------------|
-| `schema.sql`      | DROP + CREATE the four tables, foreign keys, CHECK constraints, and the overlap index.        |
-| `seed.sql`        | Idempotent inserts: 4 users (Student / Admin / Staff / Student), 3 rooms, 3 room-level QR codes. |
-| `fix-pg-bind.sh`  | One-time WSL fix: makes Postgres listen on `*` so the .NET backend on Windows can reach it.  |
+| File | Purpose |
+|---|---|
+| `schema.sql` | Full reset schema: users, rooms, reservations, qr_codes, scan_logs, notifications |
+| `seed.sql` | Idempotent seed users, standard rooms, demo room, and room QR values |
+| `fix-pg-bind.sh` | WSL PostgreSQL bind helper for Windows local development |
 
----
-
-## Apply manually
+## Local Setup
 
 ```bash
 sudo service postgresql start
-PGPASSWORD=postgres psql -U postgres -h localhost \
-    -c 'CREATE DATABASE "RoomReservationDB";'
+PGPASSWORD=postgres psql -U postgres -h localhost -c 'CREATE DATABASE "RoomReservationDB";'
 PGPASSWORD=postgres psql -U postgres -h localhost -d RoomReservationDB -f schema.sql
 PGPASSWORD=postgres psql -U postgres -h localhost -d RoomReservationDB -f seed.sql
 ```
 
-## Windows / WSL bind fix
+## Tables
 
-If you run the .NET backend on **Windows** and PostgreSQL inside **WSL2**,
-Windows-localhost calls to port 5432 may be refused because Postgres binds
-to `127.0.0.1` only by default. Run this once inside WSL to make Postgres
-listen on every interface and accept md5 auth:
+| Table | Purpose |
+|---|---|
+| `users` | Student, staff, and admin accounts |
+| `rooms` | Bookable rooms, including `IsDemoRoom` |
+| `reservations` | Time-bound reservations with status and QR payload |
+| `qr_codes` | Static room QR values |
+| `scan_logs` | Append-only scan audit trail |
+| `notifications` | In-app notification feed |
 
-```bash
-bash database/fix-pg-bind.sh
-```
+## Reservation Status Values
 
-The script edits `postgresql.conf` (`listen_addresses = '*'`) and appends an
-`md5` rule to `pg_hba.conf`, then restarts the service. `start-demo.bat`
-runs it automatically when it detects the connection failure.
+- `Pending`
+- `Confirmed`
+- `Active`
+- `CheckedIn`
+- `OnBreak`
+- `CheckedOut`
+- `Cancelled`
+- `Expired`
+- `NoShow`
 
-Verify:
+`OnBreak` keeps the room slot held while a student is away on a limited break.
 
-```bash
-PGPASSWORD=postgres psql -U postgres -h localhost -d RoomReservationDB \
-    -c 'SELECT "UserID","FirstName","Role" FROM users;' \
-    -c 'SELECT "RoomID","RoomName","Capacity" FROM rooms;'
-```
+## Notification Types
 
----
+- `ReservationCreated`
+- `ReservationCancelled`
+- `ReservationEnded`
+- `BreakStarted`
+- `BreakEnded`
+- `BreakOverrun`
+- `CheckInGraceWarning`
+- `Expired`
+- `NoShow`
+- `NoExit`
+- `Overstay`
+- `Info`
 
-## Schema diagram
+## Key Constraints
 
-```
-users         ----------(N)  reservations  (N)----------  rooms
-                                                  |
-                                                  | 1:1
-                                                  v
-                                                qr_codes
-```
+- Standard active reservations are limited to one per user by partial unique
+  index `idx_reservations_one_active_per_user`.
+- Demo room reservations are excluded from that one-active-reservation rule via
+  `IsDemoReservation = FALSE` in the partial index.
+- Capacity conflicts are checked with `idx_reservations_conflict_check`.
+- `scan_logs.ScanType` allows `CheckIn`, `CheckOut`, `BreakOut`, and `BreakIn`.
 
-| Table          | Purpose                                | Key constraints                               |
-|----------------|----------------------------------------|-----------------------------------------------|
-| `users`        | Auth principals (Student/Staff/Admin)  | UNIQUE Email, CHECK Role                      |
-| `rooms`        | Bookable resources                     | Capacity >= 1                                 |
-| `reservations` | Time-bound bookings                    | FK on UserID/RoomID, `idx_reservations_conflict_check` |
-| `qr_codes`     | Per-room door stickers                 | UNIQUE RoomID (1:1), ON DELETE CASCADE        |
+## Seeded Accounts
 
----
+| Role | Login |
+|---|---|
+| Student | `20210001` / `123456` |
+| Student | `20210002` / `654321` |
+| Staff | `sara.staff@university.com` / `123456` |
+| Admin | `admin@university.com` / `admin123` |
 
-## Composite index
+## Seeded Rooms
 
-```sql
-CREATE INDEX idx_reservations_conflict_check
-    ON reservations ("RoomID", "Status", "StartTime", "EndTime");
-```
-
-Optimises the half-open interval overlap query that runs on every reservation
-creation. Column order matches the WHERE-clause selectivity (most to least
-selective), so the index serves both the conflict check and any
-"per-room agenda" listings without an extra index.
-
----
-
-## Seeded test data
-
-| Users                | Rooms                                | QR codes              |
-|----------------------|--------------------------------------|-----------------------|
-| Ahmed Ali (Student)  | Lab 101, Building A, capacity 30     | `ROOM-1-LAB101`       |
-| Admin User (Admin)   | Classroom 201, Building B, capacity 50 | `ROOM-2-CLASSROOM201` |
-| Sara Khan (Student)  | Meeting Room A, Building C, capacity 1 | `ROOM-3-MEETINGROOMA` |
-| Sara Mohamed (Staff) |                                      |                       |
+- Room A
+- Room B
+- Room C
+- Demo Presentation Room (`IsDemoRoom = TRUE`, capacity 30)

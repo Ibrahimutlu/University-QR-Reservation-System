@@ -140,7 +140,7 @@ namespace RoomReservationSystem.Controllers
                 Services.NotificationService.Fire(
                     _context, reservation.UserID, reservation.ReservationID,
                     Services.NotificationService.Types.ReservationCreated,
-                    $"Rezervasyonunuz oluşturuldu: {room.RoomName}, {reservation.StartTime:dd.MM.yyyy HH:mm} - {reservation.EndTime:HH:mm}.",
+                    $"Your reservation was created: {room.RoomName}, {reservation.StartTime:dd.MM.yyyy HH:mm} - {reservation.EndTime:HH:mm}.",
                     Services.NotificationService.Severity.Info,
                     save: false);
                 _context.SaveChanges();
@@ -376,7 +376,7 @@ namespace RoomReservationSystem.Controllers
             Services.NotificationService.Fire(
                 _context, reservation.UserID, reservation.ReservationID,
                 Services.NotificationService.Types.ReservationCancelled,
-                "Rezervasyonunuz iptal edildi.",
+                "Your reservation was cancelled.",
                 Services.NotificationService.Severity.Info,
                 save: false);
 
@@ -524,8 +524,8 @@ namespace RoomReservationSystem.Controllers
                     // window finished without a check-in -> mark NoShow
                     r.Status = "NoShow";
                     r.UpdatedAt = now;
-                    string noShowMsg = "Rezervasyon penceresi sona erdi ve giris yapilmadi. " +
-                                       "Rezervasyon NoShow olarak isaretlendi.";
+                    string noShowMsg = "The reservation window ended without a check-in. " +
+                                       "The reservation was marked as NoShow.";
                     Services.NotificationService.Fire(
                         _context, r.UserID, r.ReservationID,
                         Services.NotificationService.Types.NoShow,
@@ -549,7 +549,7 @@ namespace RoomReservationSystem.Controllers
                     // grace exhausted -> Expired and free the slot
                     r.Status = "Expired";
                     r.UpdatedAt = now;
-                    string expiredMsg = "Giris suresi doldu. Rezervasyon iptal edildi.";
+                    string expiredMsg = "The check-in grace period expired. The reservation was closed.";
                     Services.NotificationService.Fire(
                         _context, r.UserID, r.ReservationID,
                         Services.NotificationService.Types.Expired,
@@ -566,8 +566,8 @@ namespace RoomReservationSystem.Controllers
                 }
                 else
                 {
-                    string graceMsg = "Rezervasyon saatiniz basladi ancak QR girisiniz yapilmadi. " +
-                                      "Lutfen calisma alanina giris yapmak icin QR kodu taratin.";
+                    string graceMsg = "Your reservation has started, but no QR check-in was recorded. " +
+                                      "Please scan the room QR to check in.";
                     Services.NotificationService.Fire(
                         _context, r.UserID, r.ReservationID,
                         Services.NotificationService.Types.CheckInGraceWarning,

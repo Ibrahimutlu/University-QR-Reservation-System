@@ -1,243 +1,170 @@
 # API Endpoints
 
-Base URL:
-* **Local**: `http://localhost:5000`
-* **Production**: `https://university-qr-reservation-system-production.up.railway.app`
+Base URLs:
 
-All non-public endpoints expect:
+- Local: `http://localhost:5000`
+- Production: `https://university-qr-reservation-system-production.up.railway.app`
+
+All protected endpoints require:
 
 ```http
 Authorization: Bearer <jwt-token>
 ```
 
-The token is returned by `POST /api/auth/login` and carries claims for `NameIdentifier` (UserID), `Email`, and `Role`.
-
----
-
 ## Authentication
 
-### `POST /api/auth/login` — public
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| POST | `/api/auth/login` | Public | Staff/admin email login |
+| POST | `/api/auth/student-login` | Public | Student number login |
+| POST | `/api/auth/register` | Admin | Create student accounts |
 
-Request:
+Student login body:
+
+```json
+{ "studentNumber": "20210001", "password": "123456" }
+```
+
+Staff/admin login body:
+
 ```json
 { "email": "admin@university.com", "password": "admin123" }
 ```
 
-Response 200:
+Successful login response:
+
 ```json
 {
   "message": "Login successful",
-  "token":   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "role":    "Admin",
-  "userID":  2
+  "token": "jwt...",
+  "role": "Admin",
+  "userID": 2,
+  "email": "admin@university.com"
 }
 ```
-
-Response 401:
-```json
-"Invalid email or password"
-```
-
-> Student-number + name login is on the roadmap; for now students log in with the email seeded by the admin (see `docs/final-integration-report.md`).
-
-### `POST /api/auth/register` — Admin only
-
-Request:
-```json
-{
-  "firstName":     "Yeni",
-  "lastName":      "Ogrenci",
-  "email":         "yeni@university.com",
-  "password":      "demo123",
-  "role":          "Student",
-  "studentNumber": "20210099"
-}
-```
-
-Response 200 — `{ message, userID, email, role }`.
-
----
 
 ## Rooms
 
-| Method | Path                                            | Auth                     |
-|--------|-------------------------------------------------|--------------------------|
-| GET    | `/api/room`                                     | Student / Staff / Admin  |
-| GET    | `/api/room/status/{roomId}`                     | Student / Staff / Admin  |
-| GET    | `/api/room/available-slots/{roomId}?date=...`   | Student / Staff / Admin  |
-| GET    | `/api/room/search?type=&minCapacity=&...`       | Student / Staff / Admin  |
-| POST   | `/api/room/add`                                 | Admin                    |
-| PUT    | `/api/room/update/{roomId}`                     | Admin                    |
-| DELETE | `/api/room/delete/{roomId}`                     | Admin                    |
+| Method | Path | Auth |
+|---|---|---|
+| GET | `/api/room` | Student/Staff/Admin |
+| GET | `/api/room/status/{roomId}` | Student/Staff/Admin |
+| GET | `/api/room/available-slots/{roomId}?date=YYYY-MM-DD` | Student/Staff/Admin |
+| GET | `/api/room/search?...` | Student/Staff/Admin |
+| POST | `/api/room/add` | Admin |
+| PUT | `/api/room/update/{roomId}` | Admin |
+| DELETE | `/api/room/delete/{roomId}` | Admin |
 
-### `GET /api/room/available-slots/{roomId}?date=YYYY-MM-DD`
-
-Returns 2-hour slots between 08:00 and 22:00 with availability counts.
-
-```json
-{
-  "RoomID": 1, "RoomName": "Room A", "totalCapacity": 1, "Date": "2026-04-29",
-  "AvailableSlots": [
-    { "StartTime": "08:00", "EndTime": "10:00", "remainingCapacity": 1, "isAvailable": true, "Status": "Available" },
-    { "StartTime": "10:00", "EndTime": "12:00", "remainingCapacity": 1, "isAvailable": true, "Status": "Available" }
-  ],
-  "BookedSlots": [
-    { "StartTime": "12:00", "EndTime": "14:00", "remainingCapacity": 0, "isAvailable": false, "Status": "Full" }
-  ]
-}
-```
-
----
+`available-slots` returns the standard 2-hour grid. Demo rooms do not use the
+grid in the frontend; they use a free-form start/end picker and are validated
+by `/api/reservation/create`.
 
 ## Reservations
 
-| Method | Path                                           | Auth                     |
-|--------|------------------------------------------------|--------------------------|
-| POST   | `/api/reservation/create`                      | Student / Staff / Admin  |
-| GET    | `/api/reservation/{id}`                        | Owner or Admin           |
-| GET    | `/api/reservation/user/{userId}`               | Owner or Admin           |
-| GET    | `/api/reservation/all`                         | Admin                    |
-| PUT    | `/api/reservation/cancel/{id}`                 | Owner or Admin           |
-| PUT    | `/api/reservation/update/{id}`                 | Owner or Admin           |
-| GET    | `/api/reservation/warnings`                    | Student / Staff / Admin  |
+| Method | Path | Auth |
+|---|---|---|
+| POST | `/api/reservation/create` | Student/Staff/Admin |
+| GET | `/api/reservation/{id}` | Owner/Admin |
+| GET | `/api/reservation/user/{userId}` | Owner/Admin |
+| GET | `/api/reservation/active` | Student/Staff/Admin |
+| GET | `/api/reservation/all` | Admin |
+| PUT | `/api/reservation/cancel/{id}` | Owner/Admin |
+| PUT | `/api/reservation/update/{id}` | Owner/Admin |
+| GET | `/api/reservation/warnings` | Student/Staff/Admin |
 
-### `POST /api/reservation/create`
+Create request:
 
-Rules enforced in this order:
-1. Body present, `endTime > startTime`.
-2. **Slot must be exactly 2 hours**, start on the hour, start hour ∈ {8,10,12,14,16,18,20}.
-3. Date / time must be in the future.
-4. Caller must own the reservation (or be Admin).
-5. Room and user must exist.
-6. **Single-active rule** — caller cannot already have a `Pending` / `Confirmed` / `Active` / `CheckedIn` reservation.
-7. **Overlap rule** — no two confirmed reservations on the same room and time.
-
-Request:
 ```json
 {
-  "userID":          1,
-  "roomID":          1,
-  "reservationDate": "2026-04-29T00:00:00",
-  "startTime":       "2026-04-29T10:00:00",
-  "endTime":         "2026-04-29T12:00:00"
+  "userID": 1,
+  "roomID": 1,
+  "reservationDate": "2026-05-18T00:00:00",
+  "startTime": "2026-05-18T10:00:00",
+  "endTime": "2026-05-18T12:00:00"
 }
 ```
 
-Response 200:
-```json
-{
-  "message":       "Reservation created successfully",
-  "reservationID": 42,
-  "status":        "Confirmed",
-  "qrPayload":     "{...JSON encoded inside the QR...}",
-  "qrImage":       "data:image/png;base64,..."
-}
-```
+Rules:
 
-Common 400 errors:
-| Message                                                            | Cause                       |
-|--------------------------------------------------------------------|------------------------------|
-| `Reservations must be exactly 2 hours long`                        | duration != 2h               |
-| `Reservation start time must be on the hour`                       | non-zero minutes / seconds   |
-| `Reservation must start on an even hour between 08:00 and 20:00`   | start hour off-grid          |
-| `This student already has an active reservation. ...`              | single-active rule           |
-| `Room is fully booked for the selected time slot`                  | overlap                      |
-
-### `GET /api/reservation/warnings`
-
-Called by the student dashboard on every load. Returns one entry per stale reservation:
-
-```json
-[
-  {
-    "kind": "missing_checkin",
-    "reservationID": 42,
-    "roomID": 1,
-    "graceMinutesRemaining": 10,
-    "message": "Rezervasyon saatiniz basladi ancak QR girisiniz yapilmadi. ..."
-  },
-  {
-    "kind": "expired",
-    "reservationID": 43,
-    "roomID": 2,
-    "message": "Giris suresi doldu. Rezervasyon iptal edildi."
-  }
-]
-```
-
-The endpoint also writes status updates (`Expired`, `NoShow`) directly to the DB — so a single call to `/warnings` is enough to keep state consistent without a background job.
-
----
+- Standard rooms require exact 2-hour slots starting at 08:00, 10:00, 12:00,
+  14:00, 16:00, 18:00, or 20:00.
+- Demo rooms (`IsDemoRoom=true`) bypass the 2-hour grid and single-active rule.
+- Demo rooms still enforce room capacity.
+- Standard rooms enforce one live reservation per user.
+- Live statuses are `Pending`, `Confirmed`, `Active`, `CheckedIn`, and
+  `OnBreak`.
 
 ## QR
 
-| Method | Path                                            | Auth                     |
-|--------|-------------------------------------------------|--------------------------|
-| GET    | `/api/qr/room/{roomId}`                         | Staff / Admin            |
-| POST   | `/api/qr/create/{roomId}`                       | Admin                    |
-| GET    | `/api/qr/dynamic/{roomId}`                      | Staff / Admin            |
-| GET    | `/api/qr/validate?qrCodeValue=...`              | Student / Staff / Admin  |
-| GET    | `/api/qr/validate-dynamic?qrValue=...&roomId=`  | Student / Staff / Admin  |
-| POST   | `/api/qr/scan`                                  | Student / Staff / Admin  |
-| POST   | `/api/qr/check-in`                              | Student / Staff / Admin  |
-| POST   | `/api/qr/check-out`                             | Student / Staff / Admin  |
-| POST   | `/api/qr/rotate/{roomId}`                       | Admin                    |
-| POST   | `/api/qr/validate-reservation`                  | Student / Staff / Admin  |
+| Method | Path | Auth |
+|---|---|---|
+| GET | `/api/qr/room/{roomId}` | Staff/Admin |
+| POST | `/api/qr/create/{roomId}` | Admin |
+| GET | `/api/qr/dynamic/{roomId}` | Staff/Admin |
+| GET | `/api/qr/health/{roomId}` | Staff/Admin |
+| GET | `/api/qr/validate?qrCodeValue=...` | Student/Staff/Admin |
+| GET | `/api/qr/validate-dynamic?qrValue=...&roomId=...` | Student/Staff/Admin |
+| POST | `/api/qr/validate-reservation` | Student/Staff/Admin |
+| POST | `/api/qr/scan` | Student/Staff/Admin |
+| POST | `/api/qr/check-in` | Student/Staff/Admin |
+| POST | `/api/qr/break-out` | Student/Staff/Admin |
+| POST | `/api/qr/break-in` | Student/Staff/Admin |
+| POST | `/api/qr/check-out` | Student/Staff/Admin |
+| POST | `/api/qr/rotate/{roomId}` | Admin |
 
-> **Visibility rule**: students can only call the *scanning* endpoints (`scan`, `check-in`, `check-out`, `validate*`). They cannot retrieve QR images via `GET /api/qr/room/...` or `GET /api/qr/dynamic/...` — those return 403.
+QR scan body:
 
-### `POST /api/qr/check-in`
-
-Request:
 ```json
 { "roomId": 1, "qrValue": "ROOM-1-A" }
 ```
 
-Response 200:
-```json
-{
-  "message":       "Checked in",
-  "reservationID": 42,
-  "status":        "CheckedIn",
-  "validUntil":    "2026-04-29T12:00:00"
-}
-```
+Accepted QR sources:
 
-Validations:
-1. QR token belongs to that room AND is still active.
-2. Caller has a `Confirmed` or `Active` reservation now.
-3. The reservation is not already checked-in.
+- Static room QR values such as `ROOM-1-A`
+- Dynamic rotating values such as `DYN-1-...`
+- Reservation QR JSON payloads
 
-### `POST /api/qr/check-out`
+Scan time matching compares both UTC and app-local time. The app-local offset
+is configured by `APP_LOCAL_UTC_OFFSET_HOURS`, default `3`.
 
-Same body as check-in. Requires reservation to be in `CheckedIn` status. Transitions to `CheckedOut`, writes scan log.
+## Notifications
 
-### `POST /api/qr/rotate/{roomId}` — Admin only
+| Method | Path | Auth |
+|---|---|---|
+| GET | `/api/notifications/me` | Student/Staff/Admin |
+| POST | `/api/notifications/{id}/read` | Student/Staff/Admin |
+| POST | `/api/notifications/read-all` | Student/Staff/Admin |
 
-Forces a fresh dynamic QR token. Useful for "the previous code leaked" scenarios.
+Notification types:
 
----
+- `ReservationCreated`
+- `ReservationCancelled`
+- `ReservationEnded`
+- `BreakStarted`
+- `BreakEnded`
+- `BreakOverrun`
+- `CheckInGraceWarning`
+- `Expired`
+- `NoShow`
+- `NoExit`
+- `Overstay`
+- `Info`
 
 ## Health
 
-| Method | Path       | Auth | Description |
-|--------|------------|------|-------------|
-| GET    | `/`        | open | Plain text "API is running" |
-| GET    | `/health`  | open | `{ "status": "ok" }` |
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/` | Public | Plain text API status |
+| GET | `/health` | Public | `{ "status": "ok" }` |
 
----
+## Reservation Status Values
 
-## Status enum (reservations)
-
-| Value         | When set                                                                       |
-|---------------|--------------------------------------------------------------------------------|
-| `Pending`     | (reserved for future flows, currently unused)                                  |
-| `Confirmed`   | Initial state on `POST /create`                                                |
-| `Active`      | (reserved — currently controllers go straight to `CheckedIn`)                  |
-| `CheckedIn`   | After successful `POST /check-in`                                              |
-| `CheckedOut`  | After `POST /check-out`                                                        |
-| `Cancelled`   | After `PUT /cancel/{id}`                                                       |
-| `Expired`     | After `GET /warnings` finds a reservation past its start + grace, no check-in |
-| `NoShow`      | After `GET /warnings` finds a reservation past its end with no check-in       |
-
-A partial unique index in `schema.sql` ensures a student cannot have more than one row in `Pending`, `Confirmed`, `Active`, or `CheckedIn` at a time.
+- `Pending`
+- `Confirmed`
+- `Active`
+- `CheckedIn`
+- `OnBreak`
+- `CheckedOut`
+- `Cancelled`
+- `Expired`
+- `NoShow`
