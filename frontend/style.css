@@ -233,12 +233,16 @@ a {
 
 .container,
 .topnav-inner {
-  width: min(1140px, calc(100% - 2.5rem));
+  width: min(1080px, calc(100% - 2.5rem));
   margin-inline: auto;
 }
 
 .main-content {
-  padding: 2rem 0 3.25rem;
+  padding: clamp(1.6rem, 3vw, 2.8rem) 0 4rem;
+}
+
+body > main:not(.main-content) {
+  padding: clamp(1.6rem, 3vw, 2.8rem) 0 4rem;
 }
 
 .site-header,
@@ -515,7 +519,16 @@ a {
 .dashboard-section,
 .message-section,
 .login-section {
-  margin-bottom: 1.35rem;
+  margin-bottom: clamp(1.4rem, 2.5vw, 2rem);
+}
+
+.message-section:has(.message-box.hidden) {
+  display: none;
+}
+
+main > section:last-child,
+.main-content > section:last-child {
+  margin-bottom: 0;
 }
 
 .hero-card,
@@ -552,13 +565,38 @@ a {
 .qr-wide-card,
 .qr-panel,
 .results-header {
-  padding: 1.35rem;
+  padding: clamp(1.45rem, 2.6vw, 1.85rem);
+}
+
+.intro-card {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: clamp(1.25rem, 3vw, 2.5rem);
+  padding: clamp(1.55rem, 3vw, 2rem);
+}
+
+.results-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.25rem;
+}
+
+.intro-card > div:first-child,
+.results-header > div:first-child {
+  min-width: 0;
 }
 
 .hero-section .hero-card {
   display: grid;
   gap: 1rem;
   grid-template-columns: 1.25fr 0.85fr;
+}
+
+.results-section .container {
+  display: grid;
+  gap: 1rem;
 }
 
 .hero-container {
@@ -590,6 +628,11 @@ a {
   letter-spacing: -0.022em;
 }
 
+.intro-card h2,
+.results-header h3 {
+  margin: 0;
+}
+
 .hero-text p,
 .intro-text,
 .panel-label,
@@ -605,6 +648,11 @@ a {
 .form-note p {
   margin: 0.45rem 0 0;
   color: var(--muted);
+}
+
+.intro-text {
+  max-width: 720px;
+  margin-top: 0.8rem;
 }
 
 .hero-badge,
@@ -624,6 +672,10 @@ a {
   background: var(--accent-soft);
 }
 
+.section-label {
+  margin: 0 0 0.7rem;
+}
+
 .hero-actions,
 .intro-actions,
 .form-actions,
@@ -633,6 +685,11 @@ a {
   flex-wrap: wrap;
   gap: 0.58rem;
   margin-top: 1rem;
+}
+
+.intro-actions {
+  flex: 0 0 auto;
+  margin-top: 0;
 }
 
 .hero-stats {
@@ -859,6 +916,14 @@ button:disabled,
   justify-content: flex-end;
   color: var(--muted);
   font-size: 0.85rem;
+  min-height: 2rem;
+  padding-bottom: 0.1rem;
+  white-space: nowrap;
+}
+
+.results-meta + .empty-state,
+.results-meta + .reservations-grid {
+  margin-top: 0.85rem;
 }
 
 .section-heading {
@@ -975,7 +1040,7 @@ button:disabled,
 .loading-state {
   border: 1px dashed var(--line-strong);
   border-radius: var(--radius-md);
-  padding: 1.1rem;
+  padding: clamp(1.35rem, 2.6vw, 1.8rem);
   text-align: center;
   color: var(--muted);
   background: var(--surface);
@@ -1008,7 +1073,7 @@ button:disabled,
 }
 
 .message-box {
-  margin-top: 0.9rem;
+  margin-top: 0;
   border-radius: var(--radius-md);
   border: 1px solid var(--line);
   background: var(--surface);
@@ -1075,7 +1140,7 @@ button:disabled,
 .details-layout,
 .reservation-layout {
   display: grid;
-  gap: 1rem;
+  gap: 1.15rem;
   grid-template-columns: 1.2fr 0.8fr;
 }
 
@@ -1427,7 +1492,16 @@ button:disabled,
 }
 
 .results-actions {
-  margin-top: 0.85rem;
+  gap: 0.7rem;
+  margin-top: 0;
+}
+
+#rrs-notifications-banner {
+  width: min(1080px, calc(100% - 2.5rem)) !important;
+  margin: 0 auto clamp(1.35rem, 2.5vw, 1.9rem) !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
 }
 
 .room-card-admin-id,
@@ -1701,7 +1775,7 @@ button:disabled,
   .topnav-inner,
   .topnav-mobile .topnav-links,
   .scanner-layout {
-    width: min(1140px, calc(100% - 1rem));
+    width: min(1080px, calc(100% - 1rem));
   }
 
   .header-container,
@@ -1749,6 +1823,25 @@ button:disabled,
     grid-template-columns: 1fr;
   }
 
+  .intro-card,
+  .results-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .intro-actions {
+    align-self: flex-start;
+  }
+
+  .results-meta {
+    justify-content: flex-start;
+    white-space: normal;
+  }
+
+  #rrs-notifications-banner {
+    width: min(1080px, calc(100% - 1rem)) !important;
+  }
+
   .site-footer {
     padding-bottom: 2.2rem;
   }
@@ -1763,11 +1856,15 @@ button:disabled,
     padding: 1rem 0 2rem;
   }
 
+  body > main:not(.main-content) {
+    padding: 1rem 0 2rem;
+  }
+
   .container,
   .topnav-inner,
   .topnav-mobile .topnav-links,
   .scanner-layout {
-    width: min(1140px, calc(100% - 0.75rem));
+    width: min(1080px, calc(100% - 0.75rem));
   }
 
   .brand-badge,
@@ -1818,6 +1915,14 @@ button:disabled,
   .scanner-frame .manual-row {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .intro-actions {
+    align-self: stretch;
+  }
+
+  #rrs-notifications-banner {
+    width: min(1080px, calc(100% - 0.75rem)) !important;
   }
 
   .primary-btn,
